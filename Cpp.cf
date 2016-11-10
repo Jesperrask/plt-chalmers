@@ -5,39 +5,43 @@ comment "/*" "*/";
 PDefs. Program ::= [Def] ;
 terminator Def "" ;
 
-DFun. Def ::= Type Ident "(" [Arg] ")" "{" [Stm] "}" ;
+DFun. Def ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
 separator Arg "," ;
 terminator Stm ";" ;
 
 ADeclType. Arg ::= Type ; 
-ADeclVar. Arg ::= Type Ident ;
-ADeclVarRef. Arg ::= Type "&" Ident ;
-ADeclInit. Arg ::= Type Ident "=" Exp ;
-ADeclConst. Arg ::= "const" Type Ident;
-ADeclConstRef. Arg ::= "const" Type "&" Ident;
+ADeclVar. Arg ::= Type Id ;
+ADeclVarRef. Arg ::= Type "&" Id ;
+ADeclInit. Arg ::= Type Id "=" Exp ;
+ADeclConst. Arg ::= "const" Type Id ;
+ADeclConstRef. Arg ::= "const" Type "&" Id;
 
 SExp. Stm ::= Exp ;
 SRet. Stm ::= "return" Exp ;
-SDecl. Stm ::= Type Ident ;
-SDecls. Stm ::= Type Ident "," [Ident] ;
-separator Ident ",";
-SInit. Stm ::= Type Ident "=" Exp ;
+SDecl. Stm ::= Type Id ;
+SDecls. Stm ::= Type Id "," [Id] ;
+separator Id "," ;
+SInit. Stm ::= Type Id "=" Exp ;
 
-TBool. Type ::= "bool";
-TInt. Type ::= "int";
-TChar. Type ::= "char";
-TDouble. Type ::= "double";
-TVoid. Type ::= "void";
+TBool. Type ::= "bool" ;
+TInt. Type ::= "int" ;
+TChar. Type ::= "char" ;
+TDouble. Type ::= "double" ;
+TVoid. Type ::= "void" ;
+TConst. Type ::= Const ;
 
-ELShift. Exp ::= Exp "<<" Exp1;
-ERShift. Exp ::= Exp ">>" Exp1;
+ELShift. Exp ::= Exp "<<" Exp1 ;
+ERShift. Exp ::= Exp ">>" Exp1 ;
 EAdd. Exp1  ::= Exp1  "+" Exp2 ;
 ESub. Exp1  ::= Exp1 "-" Exp2 ;
 EMul. Exp2 ::= Exp2 "*" Exp3 ;
 EDiv. Exp2 ::= Exp2 "/" Exp3 ;
 EInt. Exp3 ::= Integer ;
 EStr. Exp3 ::= String ;
-EQConst. Exp3 ::= [Ident];
-separator nonempty Ident "::";
-
+EQConst. Exp3 ::= Const ;
 coercions Exp 3 ;
+
+Var. Id ::= Ident;
+
+QConst. Const ::= [Ident];
+separator nonempty Ident "::";
