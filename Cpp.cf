@@ -1,0 +1,43 @@
+comment "#";
+comment "//" ;
+comment "/*" "*/";
+
+PDefs. Program ::= [Def] ;
+terminator Def "" ;
+
+DFun. Def ::= Type Ident "(" [Arg] ")" "{" [Stm] "}" ;
+separator Arg "," ;
+terminator Stm ";" ;
+
+ADeclType. Arg ::= Type ; 
+ADeclVar. Arg ::= Type Ident ;
+ADeclVarRef. Arg ::= Type "&" Ident ;
+ADeclInit. Arg ::= Type Ident "=" Exp ;
+ADeclConst. Arg ::= "const" Type Ident;
+ADeclConstRef. Arg ::= "const" Type "&" Ident;
+
+SExp. Stm ::= Exp ;
+SRet. Stm ::= "return" Exp ;
+SDecl. Stm ::= Type Ident ;
+SDecls. Stm ::= Type Ident "," [Ident] ;
+separator Ident ",";
+SInit. Stm ::= Type Ident "=" Exp ;
+
+TBool. Type ::= "bool";
+TInt. Type ::= "int";
+TChar. Type ::= "char";
+TDouble. Type ::= "double";
+TVoid. Type ::= "void";
+
+ELShift. Exp ::= Exp "<<" Exp1;
+ERShift. Exp ::= Exp ">>" Exp1;
+EAdd. Exp1  ::= Exp1  "+" Exp2 ;
+ESub. Exp1  ::= Exp1 "-" Exp2 ;
+EMul. Exp2 ::= Exp2 "*" Exp3 ;
+EDiv. Exp2 ::= Exp2 "/" Exp3 ;
+EInt. Exp3 ::= Integer ;
+EStr. Exp3 ::= String ;
+EQConst. Exp3 ::= [Ident];
+separator nonempty Ident "::";
+
+coercions Exp 3 ;
