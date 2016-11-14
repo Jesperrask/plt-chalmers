@@ -6,28 +6,35 @@ PDefs. Program ::= [Def] ;
 terminator Def "" ;
 
 DFun. Def ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
-DUs. Def ::= "using" Const ";";
+DFunNoBod. Def ::= Type Id "(" [Arg] ")" ";";
 separator Arg "," ;
 terminator Stm "" ;
+DUs. Def ::= "using" Const ";";
+DType. Def ::= TypeDef ";" ;  
 
 ADeclType. Arg ::= Type ; 
 ADeclVar. Arg ::= Type Id ;
-ADeclVarRef. Arg ::= Type "&" Id ;
 ADeclInit. Arg ::= Type Id "=" Exp ;
-ADeclConst. Arg ::= "const" Type Id ;
-ADeclConstRef. Arg ::= "const" Type "&" Id;
+ADeclConst. Arg ::= "const" Arg;
 
 SExp. Stm ::= Exp ";";
 SRet. Stm ::= "return" Exp ";";
-SDecl. Stm ::= Type Id ";";
-SDecls. Stm ::= Type Id "," [Id] ";";
-separator nonempty Id "," ;
-SInit. Stm ::= Type Id "=" Exp ";";
+SDecl. Stm ::= Decl ";";
 SWhile. Stm ::= "while" "(" Exp ")" Stm;
-STyp. Stm ::= "typedef" Type Id ";";
+SDoWhile. Stm ::= "do" Stm "while" "(" Exp")" ";";
+SFor. Stm ::= "for" "(" Decl ";" Exp ";" Exp ")" Stm ;
+STyp. Stm ::= TypeDef ";";
 SIf. Stm ::= "if" "(" Exp ")" Stm;
 SIfEl. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
 SBlock. Stm ::= "{" [Stm] "}" ;
+
+Dcl. Decl ::= Type Id ;
+Dcls. Decl ::= Type Id "," [Id] ;
+separator nonempty Id "," ;
+DclInit. Decl ::= Type Id "=" Exp;
+DclCons. Decl ::= "const" Decl;
+
+TDef. TypeDef ::= "typedef" Type Id;
 
 TBool. Type ::= "bool" ;
 TInt. Type ::= "int" ;
@@ -35,6 +42,8 @@ TChar. Type ::= "char" ;
 TDouble. Type ::= "double" ;
 TVoid. Type ::= "void" ;
 TConst. Type ::= Const ;
+TRef. Type ::= Type "&" ;
+
 
 EThr. Exp ::= "throw" Exp1;
 ECond. Exp1 ::= Exp2 "?" Exp ":" Exp1 ;
@@ -56,6 +65,8 @@ EDiv. Exp12 ::= Exp12 "/" Exp13 ;
 EMod. Exp12 ::= Exp12 "%" Exp13 ;
 EIncr. Exp13 ::= "++" Exp14 ;
 EDecr. Exp13 ::= "--" Exp14 ;
+ENot. Exp13 ::= "!" Exp14 ;
+EPtr. Exp13 ::= "*" Exp14 ;
 EPIncr. Exp14 ::= Exp15 "++" ;
 EPDecr. Exp14 ::= Exp15 "--" ;
 EDot. Exp14 ::= Exp14 "." Exp15 ;
@@ -65,6 +76,8 @@ separator Exp "," ;
 EInd. Exp15 ::= Exp15 "[" Exp "]" ;
 EQConst. Exp16 ::= Const ;
 EInt. Exp16 ::= Integer ;
+EChar. Exp16 ::= Char ;
+EDoub. Exp16 ::= Double ; 
 EStr. Exp16 ::= [String] ;
 separator nonempty String "" ; 
 coercions Exp 16 ;
