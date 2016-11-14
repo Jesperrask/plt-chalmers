@@ -37,9 +37,8 @@ TVoid. Type ::= "void" ;
 TConst. Type ::= Const ;
 
 EThr. Exp ::= "throw" Exp1;
-ECond. Exp1 ::= Exp2 "?" Exp2 ":" Exp1 ;
+ECond. Exp1 ::= Exp2 "?" Exp ":" Exp1 ;
 EAss. Exp2 ::= Exp3 "=" Exp2 ;
-
 EOr. Exp3 ::= Exp3 "||" Exp4 ;
 EAnd. Exp4 ::= Exp4 "&&" Exp5 ;
 EEq. Exp8 ::= Exp9 "==" Exp9 ;
@@ -48,26 +47,22 @@ ELt. Exp9 ::= Exp10 "<" Exp10 ;
 EGt. Exp9 ::= Exp10 ">" Exp10 ;
 ELtEq. Exp9 ::= Exp10 "<=" Exp10 ;
 EGtWq. Exp9 ::= Exp10 ">=" Exp10 ;
-
 ELShift. Exp10 ::= Exp10 "<<" Exp11 ;
 ERShift. Exp10 ::= Exp10 ">>" Exp11 ;
-
 EAdd. Exp11  ::= Exp11  "+" Exp12 ;
 ESub. Exp11  ::= Exp11 "-" Exp12 ;
 EMul. Exp12 ::= Exp12 "*" Exp13 ;
 EDiv. Exp12 ::= Exp12 "/" Exp13 ;
 EMod. Exp12 ::= Exp12 "%" Exp13 ;
-
 EIncr. Exp13 ::= "++" Exp14 ;
 EDecr. Exp13 ::= "--" Exp14 ;
 EPIncr. Exp14 ::= Exp15 "++" ;
 EPDecr. Exp14 ::= Exp15 "--" ;
-
 EDot. Exp14 ::= Exp14 "." Exp15 ;
 EArr. Exp14 ::= Exp14 "->" Exp15 ;
-EFCall. Exp ::= Exp "(" [Exp] ")" ;
+EFCall. Exp15 ::= Exp15 "(" [Exp] ")" ;
 separator Exp "," ; 
-EInd. Exp ::= Exp "[" Exp "]" ;
+EInd. Exp15 ::= Exp15 "[" Exp "]" ;
 EQConst. Exp16 ::= Const ;
 EInt. Exp16 ::= Integer ;
 EStr. Exp16 ::= [String] ;
