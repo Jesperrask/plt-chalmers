@@ -6,8 +6,9 @@ PDefs. Program ::= [Def] ;
 terminator Def "" ;
 
 DFun. Def ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
+DUs. Def ::= "using" Const ";";
 separator Arg "," ;
-terminator Stm ";" ;
+terminator Stm "" ;
 
 ADeclType. Arg ::= Type ; 
 ADeclVar. Arg ::= Type Id ;
@@ -16,12 +17,17 @@ ADeclInit. Arg ::= Type Id "=" Exp ;
 ADeclConst. Arg ::= "const" Type Id ;
 ADeclConstRef. Arg ::= "const" Type "&" Id;
 
-SExp. Stm ::= Exp ;
-SRet. Stm ::= "return" Exp ;
-SDecl. Stm ::= Type Id ;
-SDecls. Stm ::= Type Id "," [Id] ;
-separator Id "," ;
-SInit. Stm ::= Type Id "=" Exp ;
+SExp. Stm ::= Exp ";";
+SRet. Stm ::= "return" Exp ";";
+SDecl. Stm ::= Type Id ";";
+SDecls. Stm ::= Type Id "," [Id] ";";
+separator nonempty Id "," ;
+SInit. Stm ::= Type Id "=" Exp ";";
+SWhile. Stm ::= "while" "(" Exp ")" Stm;
+STyp. Stm ::= "typedef" Type Id ";";
+SIf. Stm ::= "if" "(" Exp ")" Stm;
+SIfEl. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
+SBlock. Stm ::= "{" [Stm] "}" ;
 
 TBool. Type ::= "bool" ;
 TInt. Type ::= "int" ;
@@ -30,18 +36,49 @@ TDouble. Type ::= "double" ;
 TVoid. Type ::= "void" ;
 TConst. Type ::= Const ;
 
-ELShift. Exp ::= Exp "<<" Exp1 ;
-ERShift. Exp ::= Exp ">>" Exp1 ;
-EAdd. Exp1  ::= Exp1  "+" Exp2 ;
-ESub. Exp1  ::= Exp1 "-" Exp2 ;
-EMul. Exp2 ::= Exp2 "*" Exp3 ;
-EDiv. Exp2 ::= Exp2 "/" Exp3 ;
-EInt. Exp3 ::= Integer ;
-EStr. Exp3 ::= String ;
-EQConst. Exp3 ::= Const ;
-coercions Exp 3 ;
+EThr. Exp ::= "throw" Exp1;
+ECond. Exp1 ::= Exp2 "?" Exp2 ":" Exp1 ;
+EAss. Exp2 ::= Exp3 "=" Exp2 ;
+
+EOr. Exp3 ::= Exp3 "||" Exp4 ;
+EAnd. Exp4 ::= Exp4 "&&" Exp5 ;
+EEq. Exp8 ::= Exp9 "==" Exp9 ;
+ENEq. Exp8 ::= Exp9 "!=" Exp9 ;
+ELt. Exp9 ::= Exp10 "<" Exp10 ;
+EGt. Exp9 ::= Exp10 ">" Exp10 ;
+ELtEq. Exp9 ::= Exp10 "<=" Exp10 ;
+EGtWq. Exp9 ::= Exp10 ">=" Exp10 ;
+
+ELShift. Exp10 ::= Exp10 "<<" Exp11 ;
+ERShift. Exp10 ::= Exp10 ">>" Exp11 ;
+
+EAdd. Exp11  ::= Exp11  "+" Exp12 ;
+ESub. Exp11  ::= Exp11 "-" Exp12 ;
+EMul. Exp12 ::= Exp12 "*" Exp13 ;
+EDiv. Exp12 ::= Exp12 "/" Exp13 ;
+EMod. Exp12 ::= Exp12 "%" Exp13 ;
+
+EIncr. Exp13 ::= "++" Exp14 ;
+EDecr. Exp13 ::= "--" Exp14 ;
+EPIncr. Exp14 ::= Exp15 "++" ;
+EPDecr. Exp14 ::= Exp15 "--" ;
+
+EDot. Exp14 ::= Exp14 "." Exp15 ;
+EArr. Exp14 ::= Exp14 "->" Exp15 ;
+EFCall. Exp ::= Exp "(" [Exp] ")" ;
+separator Exp "," ; 
+EInd. Exp ::= Exp "[" Exp "]" ;
+EQConst. Exp16 ::= Const ;
+EInt. Exp16 ::= Integer ;
+EStr. Exp16 ::= [String] ;
+separator nonempty String "" ; 
+coercions Exp 16 ;
 
 Var. Id ::= Ident;
 
-QConst. Const ::= [Ident];
-separator nonempty Ident "::";
+QConsts. Const ::= [ConstEl];
+separator nonempty ConstEl "::";
+
+QConstId. ConstEl ::= Ident;
+QConstTp. ConstEl ::= Ident "<" [Type] ">";
+separator Type ",";
