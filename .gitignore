@@ -1,3 +1,6 @@
+*.swp
+Makefile
+temp/
 *.hs
 *.x
 *.y
