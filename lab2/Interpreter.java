@@ -107,7 +107,7 @@ public class Interpreter {
 			Value condition = p.exp_.accept(new ExpVisitor(), arg);
 			if(((VBool)condition).value == true){
 				Value v = p.stm_.accept(new StmVisitor(), arg);
-				if(p.stm_ instanceof SReturn)
+				if(v!=null)
 					return v;
 				else
 					p.accept(new StmVisitor(), arg);
@@ -120,7 +120,7 @@ public class Interpreter {
 			newBlock();
 			for (Stm s: p.liststm_) {
 				Value v = s.accept(new StmVisitor(), arg);
-				if(s instanceof SReturn){
+				if(v!=null){
 					popBlock();
 					return v;
 				}
@@ -203,15 +203,14 @@ public class Interpreter {
 			} else if(fun.id_.equals("readInt")){
 				int num = in.nextInt();
 				retVal = new VInt(num);
-			}else if(fun.id_.equals("readDouble")){
+			} else if(fun.id_.equals("readDouble")){
 				double num = in.nextDouble();
 				retVal = new VDouble(num);
-			}
-			else{
+			} else{
 				//execute statements in function
 				for(Stm s : fun.liststm_){
 					retVal = s.accept(new StmVisitor(), arg);
-					if(s instanceof SReturn || retVal!=null)
+					if(retVal!=null)
 						break;
 				}
 			}
@@ -421,9 +420,12 @@ public class Interpreter {
 	public Value lookupVar(String x) {
 		for (Map<String,Value> m : env) {
 			Value v = m.get(x);
-			if (v != null) return v;
+			if (v instanceof VNull)
+				throw new RuntimeException("uninitialized variable " + x);
+			else if (v != null) 
+				return v;
 		}
-		throw new TypeException("uninitialized variable " + x);
+		throw new RuntimeException("uninitialized variable " + x);
 	}
 
 	public Value updateEnv(String x, Value v){
@@ -434,12 +436,12 @@ public class Interpreter {
 				return v;
 			}
 		}
-		throw new TypeException("update failed - unbound variable " + x);
+		throw new TypeException("unbound variable " + x);
 	}
 
 	public ListArg singleArg (Type t) {
 		ListArg l = new ListArg();
-		l.add(new ADecl(t, "x"));
+		l.add(new ADecl(t, "a1"));
 		return l;
 	}
 
