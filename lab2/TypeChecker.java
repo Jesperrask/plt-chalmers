@@ -139,6 +139,10 @@ public class TypeChecker
 
 		public Void visit(CPP.Absyn.SWhile p, Void arg)
 		{
+			newBlock();
+			check(BOOL, p.exp_.accept(new ExpVisitor(), arg));
+			p.stm_.accept(new StmVisitor(), arg);
+			popBlock();
 			return null;
 		}
 
@@ -150,8 +154,16 @@ public class TypeChecker
 			popBlock();
 			return null;
 		}
+		
 		public Void visit(CPP.Absyn.SIfElse p, Void arg)
 		{
+			check(BOOL, p.exp_.accept(new ExpVisitor(), arg));
+			newBlock();
+			p.stm_1.accept(new StmVisitor(), arg);
+			popBlock();
+			newBlock();
+			p.stm_2.accept(new StmVisitor(), arg);
+			popBlock();
 			return null;
 		}
 	}
@@ -216,77 +228,113 @@ public class TypeChecker
 		}
 		public Type visit(CPP.Absyn.EPreIncr p, Void arg)
 		{
-			return null;
+			return numericType(lookupVar(isVar(p.exp_)));
 		}
 		public Type visit(CPP.Absyn.EPreDecr p, Void arg)
 		{
-			return null;
+			return numericType(lookupVar(isVar(p.exp_)));
 		}
 
 		// Arithmetical operators
 
 		public Type visit(CPP.Absyn.ETimes p, Void arg)
 		{
-			return null;
+			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
+			numericType(t1);
+			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return t1;
 		}
 		public Type visit(CPP.Absyn.EDiv p, Void arg)
 		{
-			return null;
+			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
+			numericType(t1);
+			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return t1;
 		}
 		public Type visit(CPP.Absyn.EPlus p, Void arg)
 		{
-			return null;
+			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
+			numericType(t1);
+			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return t1;
 		}
 		public Type visit(CPP.Absyn.EMinus p, Void arg)
 		{
-			return null;
+			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
+			numericType(t1);
+			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return t1;
 		}
 
 		// Comparison operators
 
 		public Type visit(CPP.Absyn.ELt p, Void arg)
 		{
-			return null;
+			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
+			numericType(t1);
+			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return BOOL;
 		}
 		public Type visit(CPP.Absyn.EGt p, Void arg)
 		{
-			return null;
+			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
+			numericType(t1);
+			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return BOOL;
 		}
 		public Type visit(CPP.Absyn.ELtEq p, Void arg)
 		{
-			return null;
+			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
+			numericType(t1);
+			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return BOOL;
 		}
 		public Type visit(CPP.Absyn.EGtEq p, Void arg)
 		{
-			return null;
+			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
+			numericType(t1);
+			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return BOOL;
 		}
 
 		// Equality operators
 
 		public Type visit(CPP.Absyn.EEq p, Void arg)
 		{
-			return null;
+			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
+			eQType(t1);
+			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return BOOL;
 		}
 		public Type visit(CPP.Absyn.ENEq p, Void arg)
 		{
-			return null;
+			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
+			eQType(t1);
+			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return BOOL;
 		}
 
 		// Logic operators
 
 		public Type visit(CPP.Absyn.EAnd p, Void arg)
 		{
-			return null;
+			check(BOOL, p.exp_1.accept(new ExpVisitor(), arg));
+			check(BOOL, p.exp_2.accept(new ExpVisitor(), arg));
+			return BOOL;
 		}
 		public Type visit(CPP.Absyn.EOr p, Void arg)
 		{
-			return null;
+			check(BOOL, p.exp_1.accept(new ExpVisitor(), arg));
+			check(BOOL, p.exp_2.accept(new ExpVisitor(), arg));
+			return BOOL;
 		}
 
 		// Assignment
 		public Type visit(CPP.Absyn.EAss p, Void arg)
 		{
-			return null;
+			Type varType = lookupVar(isVar(p.exp_1));
+			check(varType, p.exp_2.accept(new ExpVisitor(), arg));
+			return varType;
 		}
 	}
 
@@ -337,6 +385,19 @@ public class TypeChecker
 			throw new TypeException("expected expression of numeric type");
 		return t;
 	}
+	
+	public Type eQType (Type t1) {
+		if (!t1.equals(INT) && !t1.equals(DOUBLE) && !t1.equals(BOOL))
+			throw new TypeException("expected expression of equality type");
+		return t1;
+	}
+	
+	public Type isBool (Type t1) {
+		if (!t1.equals(BOOL))
+			throw new TypeException("expected expression of equality type");
+		return t1;
+	}
+	
 	public void equalTypes (Type t1, Type t2) {
 		if (!t1.equals(t2))
 			throw new TypeException("expected types " + t1 + " and " + t2 + " to be equal");

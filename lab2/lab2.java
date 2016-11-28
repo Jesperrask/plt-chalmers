@@ -1,4 +1,5 @@
 import java_cup.runtime.*;
+import CPP.parser;
 import CPP.*;
 import CPP.Absyn.*;
 import java.io.*;
