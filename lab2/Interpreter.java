@@ -106,7 +106,9 @@ public class Interpreter {
 		{ /* Code For SWhile Goes Here */
 			Value condition = p.exp_.accept(new ExpVisitor(), arg);
 			if(((VBool)condition).value == true){
+				newBlock();
 				Value v = p.stm_.accept(new StmVisitor(), arg);
+				popBlock();
 				//if some statement returns a value, return it and stop loop!
 				if(v!=null)
 					return v;
@@ -137,12 +139,16 @@ public class Interpreter {
 			Value condition = p.exp_.accept(new ExpVisitor(), arg);
 			//if condition is true, evaluate then stmtand return value
 			if(((VBool)condition).value == true){
+				newBlock();
 				Value thenStmt = p.stm_1.accept(new StmVisitor(), arg);
+				popBlock();
 				return thenStmt;
 			} 
 			//else, evaluate else stmt and return value
 			else{
+				newBlock();
 				Value elseStmt = p.stm_2.accept(new StmVisitor(), arg);
+				popBlock();
 				return elseStmt;
 			}
 		}
