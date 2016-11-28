@@ -21,12 +21,11 @@ public class lab2 {
 
         } catch (TypeException e) {
             System.out.println("TYPE ERROR");
-            System.err.println(e.toString());
+            System.err.println(e.getMessage());
             System.exit(1);
         } catch (RuntimeException e) {
             System.out.println("RUNTIME ERROR");
-            e.printStackTrace();
-            System.err.println(e.toString());
+            System.err.println(e.getMessage());
             System.exit(-1);
         } catch (IOException e) {
             System.err.println(e.toString());
