@@ -111,7 +111,7 @@ public class TypeChecker
 	{
 		public Void visit(CPP.Absyn.SExp p, Void arg)
 		{
-			Type t = p.exp_.accept(new ExpVisitor(), arg);
+			p.exp_.accept(new ExpVisitor(), arg);
 			return null;
 		}
 
