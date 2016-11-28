@@ -107,8 +107,10 @@ public class Interpreter {
 			Value condition = p.exp_.accept(new ExpVisitor(), arg);
 			if(((VBool)condition).value == true){
 				Value v = p.stm_.accept(new StmVisitor(), arg);
+				//if some statement returns a value, return it and stop loop!
 				if(v!=null)
 					return v;
+				//else, continue evaluation of while stmt
 				else
 					p.accept(new StmVisitor(), arg);
 			}
@@ -120,6 +122,7 @@ public class Interpreter {
 			newBlock();
 			for (Stm s: p.liststm_) {
 				Value v = s.accept(new StmVisitor(), arg);
+				//stop and return if some stmt returns a value
 				if(v!=null){
 					popBlock();
 					return v;
@@ -132,10 +135,13 @@ public class Interpreter {
 		public Value visit(CPP.Absyn.SIfElse p, Void arg)
 		{ /* Code For SIfElse Goes Here */
 			Value condition = p.exp_.accept(new ExpVisitor(), arg);
+			//if condition is true, evaluate then stmtand return value
 			if(((VBool)condition).value == true){
 				Value thenStmt = p.stm_1.accept(new StmVisitor(), arg);
 				return thenStmt;
-			} else{
+			} 
+			//else, evaluate else stmt and return value
+			else{
 				Value elseStmt = p.stm_2.accept(new StmVisitor(), arg);
 				return elseStmt;
 			}
