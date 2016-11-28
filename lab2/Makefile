@@ -33,7 +33,7 @@ CPP/parser.class: CPP/parser.java CPP/sym.java
 CPP/PrettyPrinter.class: CPP/PrettyPrinter.java
 
 clean:
-	rm -f CPP/Absyn/*.class CPP/*.class CPP/*.bak CPP/Absyn/*.back
+	rm -f CPP/Absyn/*.class CPP/*.class CPP/*.bak CPP/Absyn/*.back *.class
 
 distclean: vclean
 
