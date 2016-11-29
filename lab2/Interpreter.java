@@ -55,7 +55,9 @@ public class Interpreter {
 
 			DFun main = symTab.get("main");
 			for(Stm s : main.liststm_){
-				s.accept(new StmVisitor(), arg);
+				Value v = s.accept(new StmVisitor(), arg);
+				if(v!=null)
+					break;
 			}
 
 			return null;
