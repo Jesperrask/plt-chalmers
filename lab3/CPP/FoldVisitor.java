@@ -213,6 +213,12 @@ public abstract class FoldVisitor<R,A> implements AllVisitor<R,A> {
       r = combine(p.exp_2.accept(this, arg), r, arg);
       return r;
     }
+    public R visit(CPP.Absyn.ETyped p, A arg) {
+      R r = leaf(arg);
+      r = combine(p.exp_.accept(this, arg), r, arg);
+      r = combine(p.type_.accept(this, arg), r, arg);
+      return r;
+    }
 
 /* Type */
     public R visit(CPP.Absyn.Type_bool p, A arg) {

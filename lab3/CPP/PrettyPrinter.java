@@ -577,6 +577,17 @@ public class PrettyPrinter
        pp(_eass.exp_2, 2);
        if (_i_ > 2) render(_R_PAREN);
     }
+    else     if (foo instanceof CPP.Absyn.ETyped)
+    {
+       CPP.Absyn.ETyped _etyped = (CPP.Absyn.ETyped) foo;
+       if (_i_ > 0) render(_L_PAREN);
+       render("[");
+       pp(_etyped.exp_, 0);
+       render(":");
+       pp(_etyped.type_, 0);
+       render("]");
+       if (_i_ > 0) render(_R_PAREN);
+    }
   }
 
   private static void pp(CPP.Absyn.ListExp foo, int _i_)
@@ -976,6 +987,15 @@ public class PrettyPrinter
        render("EAss");
        sh(_eass.exp_1);
        sh(_eass.exp_2);
+       render(")");
+    }
+    if (foo instanceof CPP.Absyn.ETyped)
+    {
+       CPP.Absyn.ETyped _etyped = (CPP.Absyn.ETyped) foo;
+       render("(");
+       render("ETyped");
+       sh(_etyped.exp_);
+       sh(_etyped.type_);
        render(")");
     }
   }

@@ -314,6 +314,7 @@ interface CodeVisitor<R> {
 }
 
 class CodeToJVM implements CodeVisitor<String> {
+	
 	public String visit (Store c) {
 		if(c.type instanceof Type_int)
 			return "istore_"+c.addr;
@@ -324,7 +325,12 @@ class CodeToJVM implements CodeVisitor<String> {
 	}
 
 	public String visit (Load c) {
-		return "";
+		if(c.type instanceof Type_int)
+			return "ldc "+c.addr;
+		else if (c.type instanceof Type_double)
+			return "ldc2_w "+c.addr;
+		else 
+			return "ldc "+c.addr;
 	}
 
 	public String visit (IConst c) {
@@ -349,8 +355,11 @@ class CodeToJVM implements CodeVisitor<String> {
 	public String visit (Pop c) {
 		if (c.type instanceof Type_double) 
 			return "pop2";
-		else
+		else if(c.type instanceof Type_int ||
+				c.type instanceof Type_bool)
 			return "pop";
+		else 
+			return "";
 	}
 
 	public String visit (Return c) {
@@ -358,7 +367,7 @@ class CodeToJVM implements CodeVisitor<String> {
 	}
 
 	public String visit (Call c) {
-		return "";
+		return "invokestatic " + c.fun.toJVM();
 	}
 
 	public String visit (Label c) {
@@ -414,7 +423,12 @@ class CodeToJVM implements CodeVisitor<String> {
 	}
 
 	public String visit (Add c) {
-		return "";
+		if(c.type instanceof Type_int)
+			return "iadd";
+		else if (c.type instanceof Type_double)
+			return "dadd";
+		else 
+			return "invokestatic Runtime/plusString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;";
 	}
 
 	public String visit (Sub c) {

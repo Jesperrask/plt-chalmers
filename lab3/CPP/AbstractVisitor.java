@@ -63,6 +63,7 @@ public class AbstractVisitor<R,A> implements AllVisitor<R,A> {
     public R visit(CPP.Absyn.EAss p, A arg) { return visitDefault(p, arg); }
 
 
+    public R visit(CPP.Absyn.ETyped p, A arg) { return visitDefault(p, arg); }
 
 
 

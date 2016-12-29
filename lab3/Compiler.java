@@ -1,5 +1,21 @@
-import java.util.*;
-import CPP.Absyn.*;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import CPP.Absyn.Arg;
+import CPP.Absyn.DFun;
+import CPP.Absyn.Def;
+import CPP.Absyn.ETyped;
+import CPP.Absyn.Exp;
+import CPP.Absyn.PDefs;
+import CPP.Absyn.Program;
+import CPP.Absyn.Stm;
+import CPP.Absyn.Type;
+import CPP.Absyn.Type_bool;
+import CPP.Absyn.Type_double;
+import CPP.Absyn.Type_int;
+import CPP.Absyn.Type_void;
 
 public class Compiler
 {
@@ -10,7 +26,6 @@ public class Compiler
 	Map<String,Fun> sig;
 
 	// Context mapping variable identifiers to their type.
-	// TODO: also to their address!
 	List<Map<String,VariableEntry>> cxt;
 
 	// Next free address for local variable;
@@ -28,6 +43,15 @@ public class Compiler
 	// Global counter to get next label;
 	int nextLabel = 0;
 
+	// type constants
+	public final Type BOOL   = new Type_bool();
+	public final Type INT    = new Type_int();
+	public final Type DOUBLE = new Type_double();
+	public final Type VOID   = new Type_void();
+
+	//last seen var
+	public String lastSeenVar = null;
+
 	public void compile(String name, CPP.Absyn.Program p) {
 		// Initialize output
 		output = new LinkedList();
@@ -35,7 +59,7 @@ public class Compiler
 		//class declaration
 		output.add(".class public " + name);
 		output.add(".super java/lang/Object");
-		
+
 		//auto-generated constructor body
 		output.add(".method public <init>()V");
 		output.add("	.limit locals 1");
@@ -44,22 +68,29 @@ public class Compiler
 		output.add("	invokespecial java/lang/Object/<init>()V");
 		output.add("	return");
 		output.add(".end method");
-		
+
 		// Create signature
 		sig = new TreeMap();
-		
+
+		//add runtime methods
+		sig.put("printInt", new Fun("Runtime/printInt", new FunType(VOID, Util.singleArg(INT))));
+		sig.put("printDouble", new Fun("Runtime/printDouble", new FunType(VOID, Util.singleArg(DOUBLE))));
+		sig.put("readInt", new Fun("Runtime/readInt", new FunType(INT, Util.noArg())));
+		sig.put("readDouble", new Fun("Runtime/readDouble", new FunType(INT, Util.noArg())));
+
 		for (Def d: ((PDefs)p).listdef_) {
 			DFun def = (DFun)d;
 			sig.put(def.id_,
 					new Fun(name + "/" + def.id_, new FunType(def.type_, def.listarg_)));
 		}
-		
+
 		// Run compiler
 		p.accept(new ProgramVisitor(), null);
 
 		// Output result
 		for (String s: output) {
-			System.out.println(s);
+//			if(!s.trim().isEmpty())
+				System.out.println(s);
 		}
 	}
 
@@ -127,8 +158,8 @@ public class Compiler
 		// e;
 		public Void visit(CPP.Absyn.SExp p, Void arg)
 		{
-			p.exp_.accept(new ExpVisitor(), arg);
-			Type t = new Type_int(); // TODO: Annotating type checker
+
+			Type t = p.exp_.accept(new ExpVisitor(), null);
 			emit(new Pop(t));
 			return null;
 		}
@@ -144,19 +175,19 @@ public class Compiler
 		public Void visit(CPP.Absyn.SInit p, Void arg)
 		{
 			newVar (p.id_, p.type_);
-			p.exp_.accept(new ExpVisitor(), arg);
+			p.exp_.accept(new ExpVisitor(), null);
 			int addr = lookupVar(p.id_);
 			emit (new Store(p.type_, addr));
 			return null;
 		}
 		public Void visit(CPP.Absyn.SReturn p, Void arg)
 		{ /* Code For SReturn Goes Here */
-			p.exp_.accept(new ExpVisitor(), arg);
+			p.exp_.accept(new ExpVisitor(), null);
 			return null;
 		}
 		public Void visit(CPP.Absyn.SWhile p, Void arg)
 		{ /* Code For SWhile Goes Here */
-			p.exp_.accept(new ExpVisitor(), arg);
+			p.exp_.accept(new ExpVisitor(), null);
 			p.stm_.accept(new StmVisitor(), arg);
 			return null;
 		}
@@ -168,141 +199,161 @@ public class Compiler
 		}
 		public Void visit(CPP.Absyn.SIfElse p, Void arg)
 		{ /* Code For SIfElse Goes Here */
-			p.exp_.accept(new ExpVisitor(), arg);
+			p.exp_.accept(new ExpVisitor(), null);
 			p.stm_1.accept(new StmVisitor(), arg);
 			p.stm_2.accept(new StmVisitor(), arg);
 			return null;
 		}
 	}
-	public class ExpVisitor implements Exp.Visitor<Void,Void>
+	public class ExpVisitor implements Exp.Visitor<Type,Type>
 	{
-		public Void visit(CPP.Absyn.ETrue p, Void arg)
+		public Type visit(CPP.Absyn.ETrue p, Type arg)
 		{ /* Code For ETrue Goes Here */
 			return null;
 		}
-		public Void visit(CPP.Absyn.EFalse p, Void arg)
+		public Type visit(CPP.Absyn.EFalse p, Type arg)
 		{ /* Code For EFalse Goes Here */
 			return null;
 		}
-		public Void visit(CPP.Absyn.EInt p, Void arg)
+		public Type visit(CPP.Absyn.EInt p, Type arg)
 		{
 			emit (new IConst (p.integer_));
 			return null;
 		}
-		public Void visit(CPP.Absyn.EDouble p, Void arg)
+		public Type visit(CPP.Absyn.EDouble p, Type arg)
 		{ /* Code For EDouble Goes Here */
-			//p.double_;
+			emit(new DConst(p.double_));
 			return null;
 		}
-		public Void visit(CPP.Absyn.EId p, Void arg)
+		//x
+		public Type visit(CPP.Absyn.EId p, Type type)
 		{ /* Code For EId Goes Here */
-			//p.id_;
+			emit(new Load(type, lookupVar(p.id_)));
+			lastSeenVar = p.id_;
 			return null;
 		}
-		public Void visit(CPP.Absyn.EApp p, Void arg)
+		public Type visit(CPP.Absyn.EApp p, Type arg)
 		{ /* Code For EApp Goes Here */
-			//p.id_;
-			for (Exp x: p.listexp_)
-			{ /* ... */ }
+			Fun fn = sig.get(p.id_);
+
+			if(fn==null)
+				throw new RuntimeException(fn +  " is not defined!");
+
+			for (Exp x: p.listexp_){ 
+				x.accept(new ExpVisitor(), arg);
+			}
+
+			emit(new Call(fn));
+
 			return null;
 		}
-		public Void visit(CPP.Absyn.EPostIncr p, Void arg)
+		//exp ++
+		public Type visit(CPP.Absyn.EPostIncr p, Type arg)
 		{ /* Code For EPostIncr Goes Here */
 			p.exp_.accept(new ExpVisitor(), arg);
+			emit(new Dup(arg));
+			emit(new IConst(1));
+			emit(new Add(arg));
+			emit(new Store(arg, lookupVar(lastSeenVar)));
 			return null;
 		}
-		public Void visit(CPP.Absyn.EPostDecr p, Void arg)
+		public Type visit(CPP.Absyn.EPostDecr p, Type arg)
 		{ /* Code For EPostDecr Goes Here */
 			p.exp_.accept(new ExpVisitor(), arg);
 			return null;
 		}
-		public Void visit(CPP.Absyn.EPreIncr p, Void arg)
+		public Type visit(CPP.Absyn.EPreIncr p, Type arg)
 		{ /* Code For EPreIncr Goes Here */
 			p.exp_.accept(new ExpVisitor(), arg);
 			return null;
 		}
-		public Void visit(CPP.Absyn.EPreDecr p, Void arg)
+		public Type visit(CPP.Absyn.EPreDecr p, Type arg)
 		{ /* Code For EPreDecr Goes Here */
 			p.exp_.accept(new ExpVisitor(), arg);
 			return null;
 		}
-		public Void visit(CPP.Absyn.ETimes p, Void arg)
+		public Type visit(CPP.Absyn.ETimes p, Type arg)
 		{ /* Code For ETimes Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
 			return null;
 		}
-		public Void visit(CPP.Absyn.EDiv p, Void arg)
+		public Type visit(CPP.Absyn.EDiv p, Type arg)
 		{ /* Code For EDiv Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
 			return null;
 		}
-		public Void visit(CPP.Absyn.EPlus p, Void arg)
+		public Type visit(CPP.Absyn.EPlus p, Type arg)
 		{ /* Code For EPlus Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
 			return null;
 		}
-		public Void visit(CPP.Absyn.EMinus p, Void arg)
+		public Type visit(CPP.Absyn.EMinus p, Type arg)
 		{ /* Code For EMinus Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
 			return null;
 		}
-		public Void visit(CPP.Absyn.ELt p, Void arg)
+		public Type visit(CPP.Absyn.ELt p, Type arg)
 		{ /* Code For ELt Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
 			return null;
 		}
-		public Void visit(CPP.Absyn.EGt p, Void arg)
+		public Type visit(CPP.Absyn.EGt p, Type arg)
 		{ /* Code For EGt Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
 			return null;
 		}
-		public Void visit(CPP.Absyn.ELtEq p, Void arg)
+		public Type visit(CPP.Absyn.ELtEq p, Type arg)
 		{ /* Code For ELtEq Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
 			return null;
 		}
-		public Void visit(CPP.Absyn.EGtEq p, Void arg)
+		public Type visit(CPP.Absyn.EGtEq p, Type arg)
 		{ /* Code For EGtEq Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
 			return null;
 		}
-		public Void visit(CPP.Absyn.EEq p, Void arg)
+		public Type visit(CPP.Absyn.EEq p, Type arg)
 		{ /* Code For EEq Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
 			return null;
 		}
-		public Void visit(CPP.Absyn.ENEq p, Void arg)
+		public Type visit(CPP.Absyn.ENEq p, Type arg)
 		{ /* Code For ENEq Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
 			return null;
 		}
-		public Void visit(CPP.Absyn.EAnd p, Void arg)
+		public Type visit(CPP.Absyn.EAnd p, Type arg)
 		{ /* Code For EAnd Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
 			return null;
 		}
-		public Void visit(CPP.Absyn.EOr p, Void arg)
+		public Type visit(CPP.Absyn.EOr p, Type arg)
 		{ /* Code For EOr Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
 			return null;
 		}
-		public Void visit(CPP.Absyn.EAss p, Void arg)
+		public Type visit(CPP.Absyn.EAss p, Type arg)
 		{ /* Code For EAss Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
 			return null;
+		}
+		@Override
+		public Type visit(ETyped p, Type arg) {
+			p.exp_.accept(new ExpVisitor(), p.type_);
+			return p.type_;
 		}
 	}
 
@@ -315,6 +366,7 @@ public class Compiler
 		VariableEntry varEntry = new VariableEntry(t, nextLocal);
 		cxt.get(0).put(x,varEntry);
 		nextLocal = nextLocal + t.accept(new Size(), null);
+		++limitLocals;
 	}
 
 	Integer lookupVar (String x) {

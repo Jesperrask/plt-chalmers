@@ -19,8 +19,8 @@ public class lab3 {
             l = new Yylex(new FileReader(path));
             parser p = new parser(l);
             CPP.Absyn.Program parse_tree = p.pProgram();
-            new TypeChecker().typecheck(parse_tree);
-            new Compiler().compile(FilenameUtils.getBaseName(path), parse_tree);
+            CPP.Absyn.Program annotated_parse_tree = new TypeChecker().typecheck(parse_tree);
+            new Compiler().compile(FilenameUtils.getBaseName(path), annotated_parse_tree);
         } catch (TypeException e) {
             System.out.println("TYPE ERROR");
             System.err.println(e.toString());

@@ -194,6 +194,11 @@ public class ComposVisitor<A> implements
       Exp exp_1 = p.exp_1.accept(this, arg);
       Exp exp_2 = p.exp_2.accept(this, arg);
       return new CPP.Absyn.EAss(exp_1, exp_2);
+    }    public Exp visit(CPP.Absyn.ETyped p, A arg)
+    {
+      Exp exp_ = p.exp_.accept(this, arg);
+      Type type_ = p.type_.accept(this, arg);
+      return new CPP.Absyn.ETyped(exp_, type_);
     }
 /* Type */
     public Type visit(CPP.Absyn.Type_bool p, A arg)

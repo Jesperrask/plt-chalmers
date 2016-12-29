@@ -1,3 +1,4 @@
+*.bak
 progs-test-lab2
 *.class
 .classpath

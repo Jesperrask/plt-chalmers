@@ -187,7 +187,12 @@ public class VisitSkel
       p.exp_1.accept(new ExpVisitor<R,A>(), arg);
       p.exp_2.accept(new ExpVisitor<R,A>(), arg);
       return null;
-    }                            
+    }            public R visit(CPP.Absyn.ETyped p, A arg)
+    { /* Code For ETyped Goes Here */
+      p.exp_.accept(new ExpVisitor<R,A>(), arg);
+      p.type_.accept(new TypeVisitor<R,A>(), arg);
+      return null;
+    }                    
   }
   public class TypeVisitor<R,A> implements Type.Visitor<R,A>
   {

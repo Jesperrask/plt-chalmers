@@ -23,5 +23,9 @@ public class Runtime {
     public static double readDouble () {
         return scan.nextDouble();
     }
+    
+    public static String plusString(String a, String b){
+    	return a + b;
+    }
 
 }

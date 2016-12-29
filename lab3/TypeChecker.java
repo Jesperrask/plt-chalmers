@@ -20,15 +20,15 @@ public class TypeChecker
 
 	// Entry point
 
-	public void typecheck(Program p) {
-		p.accept(new ProgramVisitor(), null);
+	public Program typecheck(Program p) {
+		return p.accept(new ProgramVisitor(), null);
 	}
 
 	////////////////////////////// Program //////////////////////////////
 
-	public class ProgramVisitor implements Program.Visitor<Void,Void>
+	public class ProgramVisitor implements Program.Visitor<Program,Void>
 	{
-		public Void visit(CPP.Absyn.PDefs p, Void arg)
+		public Program visit(CPP.Absyn.PDefs p, Void arg)
 		{
 			// Put primitive functions into signature
 			sig = new TreeMap<String,FunType>();
@@ -46,9 +46,11 @@ public class TypeChecker
 				sig.put(d.id_, new FunType(d.type_, d.listarg_));
 			}
 
+			ListDef typedDefs = new ListDef();
+			
 			// Check definitions
 			for (Def x: p.listdef_) {
-				x.accept(new DefVisitor(), arg);
+				typedDefs.add(x.accept(new DefVisitor(), arg));
 			}
 
 			FunType ft = sig.get("main");
@@ -58,7 +60,8 @@ public class TypeChecker
 				throw new TypeException("main function is not Int!");
 			if(!ft.args.isEmpty())
 				throw new TypeException("main function cannot have any arguments!");
-			return null;
+			
+			return new PDefs(typedDefs);
 		}
 	}
 
@@ -70,271 +73,281 @@ public class TypeChecker
 
 	////////////////////////////// Function //////////////////////////////
 
-	public class DefVisitor implements Def.Visitor<Void,Void>
+	public class DefVisitor implements Def.Visitor<Def,Void>
 	{
-		public Void visit(CPP.Absyn.DFun p, Void arg)
+		public Def visit(CPP.Absyn.DFun p, Void arg)
 		{
 			// set return type and initial context
 			returnType = p.type_;
 			cxt = new LinkedList();
 			cxt.add(new TreeMap());
 
+			ListArg args = new ListArg();
 			// add all function parameters to context
 			for (Arg a: p.listarg_) {
-				a.accept(new ArgVisitor(), arg);
+				args.add(a.accept(new ArgVisitor(), arg));
 			}
 
+			ListStm typedStms = new ListStm();
 			// check function statements
 			for (Stm s: p.liststm_) {
-				s.accept(new StmVisitor(), arg);
+				typedStms.add(s.accept(new StmVisitor(), arg));
 			}
 
-			return null;
+			return new DFun(p.type_, p.id_, args, typedStms);
 		}
 	}
 
 	///////////////////////// Function argument /////////////////////////
 
 	// Add a type declaration to the context
-	public class ArgVisitor implements Arg.Visitor<Void,Void>
+	public class ArgVisitor implements Arg.Visitor<Arg,Void>
 	{
-		public Void visit(CPP.Absyn.ADecl p, Void arg)
+		public Arg visit(CPP.Absyn.ADecl p, Void arg)
 		{
 			newVar(p.id_, p.type_);
-			return null;
+			return p;
 		}
 	}
 
 	////////////////////////////// Statement //////////////////////////////
 
-	public class StmVisitor implements Stm.Visitor<Void,Void>
+	public class StmVisitor implements Stm.Visitor<Stm,Void>
 	{
-		public Void visit(CPP.Absyn.SExp p, Void arg)
+		public Stm visit(CPP.Absyn.SExp p, Void arg)
 		{
-			p.exp_.accept(new ExpVisitor(), arg);
-			return null;
+			Exp typedExp = p.exp_.accept(new ExpVisitor(), arg);
+			return new SExp(typedExp);
 		}
 
-		public Void visit(CPP.Absyn.SDecls p, Void arg)
+		public Stm visit(CPP.Absyn.SDecls p, Void arg)
 		{
 			for(String id : p.listid_){
 				newVar(id, p.type_);
 			}
-			return null;
+			return p;
 		}
 
 		// E.g. "int x = 1";
-		public Void visit(CPP.Absyn.SInit p, Void arg)
+		public Stm visit(CPP.Absyn.SInit p, Void arg)
 		{
-			check (p.type_, p.exp_.accept(new ExpVisitor(), arg));
+			Exp typedExp = check (p.type_, p.exp_.accept(new ExpVisitor(), arg));
 			newVar (p.id_, p.type_);
-			return null;
+			return new SInit(p.type_, p.id_, typedExp);
 		}
 
-		public Void visit(CPP.Absyn.SReturn p, Void arg)
+		public Stm visit(CPP.Absyn.SReturn p, Void arg)
 		{
-			check (returnType, p.exp_.accept(new ExpVisitor(), arg));
-			return null;
+			Exp typedExp = check (returnType, p.exp_.accept(new ExpVisitor(), arg));
+			return new SReturn(typedExp);
 		}
 
-		public Void visit(CPP.Absyn.SWhile p, Void arg)
+		public Stm visit(CPP.Absyn.SWhile p, Void arg)
 		{
 			newBlock();
-			check(BOOL, p.exp_.accept(new ExpVisitor(), arg));
+			Exp typedExp = check(BOOL, p.exp_.accept(new ExpVisitor(), arg));
 			p.stm_.accept(new StmVisitor(), arg);
 			popBlock();
-			return null;
+			return new SWhile(typedExp, p.stm_);
 		}
 
 		// E.g. int x; { int x = 1; x++; }
-		public Void visit(CPP.Absyn.SBlock p, Void arg)
+		public Stm visit(CPP.Absyn.SBlock p, Void arg)
 		{
 			newBlock();
-			for (Stm s: p.liststm_) s.accept(new StmVisitor(), arg);
+			ListStm typedStms = new ListStm();
+			for (Stm s: p.liststm_) 
+				typedStms.add(s.accept(new StmVisitor(), arg));
 			popBlock();
-			return null;
+			return new SBlock(typedStms);
 		}
 		
-		public Void visit(CPP.Absyn.SIfElse p, Void arg)
+		public Stm visit(CPP.Absyn.SIfElse p, Void arg)
 		{
-			check(BOOL, p.exp_.accept(new ExpVisitor(), arg));
+			Exp typedExp = check(BOOL, p.exp_.accept(new ExpVisitor(), arg));
 			newBlock();
 			p.stm_1.accept(new StmVisitor(), arg);
 			popBlock();
 			newBlock();
 			p.stm_2.accept(new StmVisitor(), arg);
 			popBlock();
-			return null;
+			return new SIfElse(typedExp, p.stm_1, p.stm_2);
 		}
 	}
 
 	////////////////////////////// Expression //////////////////////////////
 
-	public class ExpVisitor implements Exp.Visitor<Type,Void>
+	public class ExpVisitor implements Exp.Visitor<Exp,Void>
 	{
 
 		// Literals
-		public Type visit(CPP.Absyn.ETrue p, Void arg)
+		public Exp visit(CPP.Absyn.ETrue p, Void arg)
 		{
-			return BOOL;
+			return new ETyped(p, BOOL);
 		}
-		public Type visit(CPP.Absyn.EFalse p, Void arg)
+		public Exp visit(CPP.Absyn.EFalse p, Void arg)
 		{
-			return BOOL;
+			return new ETyped(p, BOOL);
 		}
-		public Type visit(CPP.Absyn.EInt p, Void arg)
+		public Exp visit(CPP.Absyn.EInt p, Void arg)
 		{
-			return INT;
+			return new ETyped(p, INT);
 		}
-		public Type visit(CPP.Absyn.EDouble p, Void arg)
+		public Exp visit(CPP.Absyn.EDouble p, Void arg)
 		{
-			return DOUBLE;
+			return new ETyped(p, DOUBLE);
 		}
 
 		// Variable
-		public Type visit(CPP.Absyn.EId p, Void arg)
+		public Exp visit(CPP.Absyn.EId p, Void arg)
 		{
-			return lookupVar (p.id_);
+			return new ETyped(p, lookupVar (p.id_));
 		}
 
 		// Function call  plus(4,3)  where  int plus(int x, int y);
-		public Type visit(CPP.Absyn.EApp p, Void arg)
+		public Exp visit(CPP.Absyn.EApp p, Void arg)
 		{
 			FunType ft = sig.get(p.id_);
 			if (ft == null)
 				throw new TypeException("Undefined function " + p.id_);
 			if (ft.args.size() != p.listexp_.size())
 				throw new TypeException("Function " + p.id_ + " not applied to correct number of arguments");
+			ListExp typedExpList = new ListExp();
 			// Check function arguments
 			int i = 0;
 			for (Exp e: p.listexp_) {
 				ADecl a = (ADecl)(ft.args.get(i));
-				check(a.type_, e.accept(new ExpVisitor(), arg));
+				typedExpList.add(check(a.type_, e.accept(new ExpVisitor(), arg)));
 				i++;
 			}
-			return ft.returnType;
+			return new ETyped( new EApp(p.id_, typedExpList), ft.returnType);
 		}
 
 		// Increment, decrement
 
 		// x++
-		public Type visit(CPP.Absyn.EPostIncr p, Void arg)
+		public Exp visit(CPP.Absyn.EPostIncr p, Void arg)
 		{
-			return numericType(lookupVar(isVar(p.exp_)));
+			return new ETyped(p, numericType(lookupVar(isVar(p.exp_))));
 		}
-		public Type visit(CPP.Absyn.EPostDecr p, Void arg)
+		public Exp visit(CPP.Absyn.EPostDecr p, Void arg)
 		{
-			return numericType(lookupVar(isVar(p.exp_)));
+			return new ETyped(p, numericType(lookupVar(isVar(p.exp_))));
 		}
-		public Type visit(CPP.Absyn.EPreIncr p, Void arg)
+		public Exp visit(CPP.Absyn.EPreIncr p, Void arg)
 		{
-			return numericType(lookupVar(isVar(p.exp_)));
+			return new ETyped(p, numericType(lookupVar(isVar(p.exp_))));
 		}
-		public Type visit(CPP.Absyn.EPreDecr p, Void arg)
+		public Exp visit(CPP.Absyn.EPreDecr p, Void arg)
 		{
-			return numericType(lookupVar(isVar(p.exp_)));
+			return new ETyped(p, numericType(lookupVar(isVar(p.exp_))));
 		}
 
 		// Arithmetical operators
 
-		public Type visit(CPP.Absyn.ETimes p, Void arg)
+		public Exp visit(CPP.Absyn.ETimes p, Void arg)
 		{
-			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
-			numericType(t1);
-			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
-			return t1;
+			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
+			Type t1 = numericType(typedE1);
+			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return new ETyped( new ETimes(typedE1, typedE2), t1);
 		}
-		public Type visit(CPP.Absyn.EDiv p, Void arg)
+		public Exp visit(CPP.Absyn.EDiv p, Void arg)
 		{
-			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
-			numericType(t1);
-			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
-			return t1;
+			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
+			Type t1 = numericType(typedE1);
+			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return new ETyped(new EDiv(typedE1, typedE2), t1);
 		}
-		public Type visit(CPP.Absyn.EPlus p, Void arg)
+		public Exp visit(CPP.Absyn.EPlus p, Void arg)
 		{
-			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
-			numericType(t1);
-			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
-			return t1;
+			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
+			Type t1 = numericType(typedE1);
+			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return new ETyped(new EPlus(typedE1, typedE2), t1);
 		}
-		public Type visit(CPP.Absyn.EMinus p, Void arg)
+		public Exp visit(CPP.Absyn.EMinus p, Void arg)
 		{
-			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
-			numericType(t1);
-			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
-			return t1;
+			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
+			Type t1 = numericType(typedE1);
+			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return new ETyped(new EMinus(typedE1, typedE2), t1);
 		}
 
 		// Comparison operators
 
-		public Type visit(CPP.Absyn.ELt p, Void arg)
+		public Exp visit(CPP.Absyn.ELt p, Void arg)
 		{
-			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
-			numericType(t1);
-			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
-			return BOOL;
+			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
+			Type t1 = numericType(typedE1);
+			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return new ETyped(new ELt(typedE1, typedE2), BOOL);
 		}
-		public Type visit(CPP.Absyn.EGt p, Void arg)
+		public Exp visit(CPP.Absyn.EGt p, Void arg)
 		{
-			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
-			numericType(t1);
-			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
-			return BOOL;
+			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
+			Type t1 = numericType(typedE1);
+			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return new ETyped(new EGt(typedE1, typedE2), BOOL);
 		}
-		public Type visit(CPP.Absyn.ELtEq p, Void arg)
+		public Exp visit(CPP.Absyn.ELtEq p, Void arg)
 		{
-			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
-			numericType(t1);
-			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
-			return BOOL;
+			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
+			Type t1 = numericType(typedE1);
+			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return new ETyped(new ELtEq(typedE1, typedE2), BOOL);
 		}
-		public Type visit(CPP.Absyn.EGtEq p, Void arg)
+		public Exp visit(CPP.Absyn.EGtEq p, Void arg)
 		{
-			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
-			numericType(t1);
-			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
-			return BOOL;
+			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
+			Type t1 = numericType(typedE1);
+			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return new ETyped(new EGt(typedE1, typedE2), BOOL);
 		}
 
 		// Equality operators
 
-		public Type visit(CPP.Absyn.EEq p, Void arg)
+		public Exp visit(CPP.Absyn.EEq p, Void arg)
 		{
-			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
-			eQType(t1);
-			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
-			return BOOL;
+			ETyped typedE1 = (ETyped) p.exp_1.accept(new ExpVisitor(), arg);
+			Type t1 = eQType(typedE1.type_);
+			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return new ETyped(new EEq(typedE1, typedE2), BOOL);
 		}
-		public Type visit(CPP.Absyn.ENEq p, Void arg)
+		public Exp visit(CPP.Absyn.ENEq p, Void arg)
 		{
-			Type t1 = p.exp_1.accept(new ExpVisitor(), arg);
-			eQType(t1);
-			check(t1, p.exp_2.accept(new ExpVisitor(), arg));
-			return BOOL;
+			ETyped typedE1 = (ETyped) p.exp_1.accept(new ExpVisitor(), arg);
+			Type t1 = eQType(typedE1.type_);
+			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return new ETyped(new ENEq(typedE1, typedE2), BOOL);
 		}
 
 		// Logic operators
 
-		public Type visit(CPP.Absyn.EAnd p, Void arg)
+		public Exp visit(CPP.Absyn.EAnd p, Void arg)
 		{
-			check(BOOL, p.exp_1.accept(new ExpVisitor(), arg));
-			check(BOOL, p.exp_2.accept(new ExpVisitor(), arg));
-			return BOOL;
+			Exp typedE1 = check(BOOL, p.exp_1.accept(new ExpVisitor(), arg));
+			Exp typedE2 = check(BOOL, p.exp_2.accept(new ExpVisitor(), arg));
+			return new ETyped( new EAnd(typedE1, typedE2), BOOL);
 		}
-		public Type visit(CPP.Absyn.EOr p, Void arg)
+		public Exp visit(CPP.Absyn.EOr p, Void arg)
 		{
-			check(BOOL, p.exp_1.accept(new ExpVisitor(), arg));
-			check(BOOL, p.exp_2.accept(new ExpVisitor(), arg));
-			return BOOL;
+			Exp typedE1 = check(BOOL, p.exp_1.accept(new ExpVisitor(), arg));
+			Exp typedE2 = check(BOOL, p.exp_2.accept(new ExpVisitor(), arg));
+			return  new ETyped(new EOr(typedE1, typedE2), BOOL);
 		}
 
 		// Assignment
-		public Type visit(CPP.Absyn.EAss p, Void arg)
+		public Exp visit(CPP.Absyn.EAss p, Void arg)
 		{
 			Type varType = lookupVar(isVar(p.exp_1));
-			check(varType, p.exp_2.accept(new ExpVisitor(), arg));
-			return varType;
+			Exp typedExp = check(varType, p.exp_2.accept(new ExpVisitor(), arg));
+			return new ETyped(new EAss(p.exp_1, typedExp), varType);
+		}
+		
+		@Override
+		public Exp visit(CPP.Absyn.ETyped p, Void arg) {
+			throw new RuntimeException("Internal error: why are you even visiting Etyped?!");
 		}
 	}
 
@@ -375,15 +388,33 @@ public class TypeChecker
 
 	// Expected type: t
 	// Inferred type: u
-	public void check (Type t, Type u) {
+	public Exp check (Type t, Exp e) {
+		if(!(e instanceof ETyped))
+			throw new RuntimeException("Internal error: expression not typed!");
+		Type u = ((ETyped)e).type_;
 		if (!t.equals(u))
 			throw new TypeException("Expected type " + t + ", but found type " + u);
+		return e;
 	}
 
+	public Type numericType (Exp e) {
+		if(!(e instanceof ETyped))
+			throw new RuntimeException("Internal error: expression not typed!");
+		Type t = ((ETyped)e).type_;
+		return numericType(t);
+	}
+	
 	public Type numericType (Type t) {
 		if (!t.equals(INT) && !t.equals(DOUBLE))
 			throw new TypeException("expected expression of numeric type");
 		return t;
+	}
+	
+	public Type eQType (Exp e) {
+		if(!(e instanceof ETyped))
+			throw new RuntimeException("Internal error: expression not typed!");
+		Type t1 = ((ETyped)e).type_;
+		return eQType(t1);
 	}
 	
 	public Type eQType (Type t1) {
@@ -392,15 +423,18 @@ public class TypeChecker
 		return t1;
 	}
 	
-	public Type isBool (Type t1) {
+	public Type isBool (Exp e) {
+		if(!(e instanceof ETyped))
+			throw new RuntimeException("Internal error: expression not typed!");
+		Type t1 = ((ETyped)e).type_;
 		if (!t1.equals(BOOL))
 			throw new TypeException("expected expression of equality type");
 		return t1;
 	}
 	
-	public void equalTypes (Type t1, Type t2) {
-		if (!t1.equals(t2))
-			throw new TypeException("expected types " + t1 + " and " + t2 + " to be equal");
-	}
-
+//	public void equalTypes (Type t1, Type t2) {
+//		if (!t1.equals(t2))
+//			throw new TypeException("expected types " + t1 + " and " + t2 + " to be equal");
+//	}
+	
 }
