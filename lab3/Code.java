@@ -317,22 +317,20 @@ class CodeToJVM implements CodeVisitor<String> {
 
 	public String visit (Store c) {
 		//TODO for i=0..3
-		if(c.type instanceof Type_int)
+		if(c.type instanceof Type_int || c.type instanceof Type_bool)
 			return "istore "+c.addr;
 		else if (c.type instanceof Type_double)
 			return "dstore "+c.addr;
-		else 
-			return "astore "+c.addr;
+		throw new RuntimeException("unsupported store type!");
 	}
 
 	public String visit (Load c) {
 		//TODO for i=0..3
-		if(c.type instanceof Type_int)
+		if(c.type instanceof Type_int || c.type instanceof Type_bool)
 			return "iload "+c.addr;
 		else if (c.type instanceof Type_double)
 			return "dload "+c.addr;
-		else 
-			return "aload "+c.addr;
+		throw new RuntimeException("unsupported load type!");
 	}
 
 	public String visit (IConst c) {
@@ -392,7 +390,7 @@ class CodeToJVM implements CodeVisitor<String> {
 	}
 
 	public String visit (IfZ c) {
-		return "";
+		return "ifeq " + c.label.label;
 	}
 
 	public String visit (IfNZ c) {
@@ -400,27 +398,45 @@ class CodeToJVM implements CodeVisitor<String> {
 	}
 
 	public String visit (IfEq c) {
-		return "";
+		if(c.type instanceof Type_int)
+			return "if_icmpeq " + c.label.label;
+		else
+			throw new RuntimeException("Not an int!");
 	}
 
 	public String visit (IfNe c) {
-		return "";
+		if(c.type instanceof Type_int)
+			return "if_icmpne " + c.label.label;
+		else
+			throw new RuntimeException("Not an int!");
 	}
 
 	public String visit (IfLt c) {
-		return "";
+		if(c.type instanceof Type_int)
+			return "if_icmplt " + c.label.label;
+		else
+			throw new RuntimeException("Not an int!");
 	}
 
 	public String visit (IfGt c) {
-		return "";
+		if(c.type instanceof Type_int)
+			return "if_icmpgt " + c.label.label;
+		else
+			throw new RuntimeException("Not an int!");
 	}
 
 	public String visit (IfLe c) {
-		return "";
+		if(c.type instanceof Type_int)
+			return "if_icmple " + c.label.label;
+		else
+			throw new RuntimeException("Not an int!");
 	}
 
 	public String visit (IfGe c) {
-		return "";
+		if(c.type instanceof Type_int)
+			return "if_icmpge " + c.label.label;
+		else
+			throw new RuntimeException("Not an int!");
 	}
 
 	public String visit (DGt c) {

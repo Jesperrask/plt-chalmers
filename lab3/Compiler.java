@@ -202,21 +202,37 @@ public class Compiler
 		}
 		public Void visit(CPP.Absyn.SWhile p, Void arg)
 		{ /* Code For SWhile Goes Here */
+			Label loopLabel = new Label(newLabel("WHILE"));
+			Label endLabel = new Label(newLabel("ENDWHILE"));
+			emit(loopLabel);
 			p.exp_.accept(new ExpVisitor(), null);
+			emit(new IfZ(endLabel));
 			p.stm_.accept(new StmVisitor(), arg);
+			emit(new Goto(loopLabel));
+			emit(endLabel);
 			return null;
 		}
 		public Void visit(CPP.Absyn.SBlock p, Void arg)
 		{ /* Code For SBlock Goes Here */
+			newBlock();
 			for (Stm x: p.liststm_)
-			{ /* ... */ }
+			{ 
+				x.accept(new StmVisitor(), arg);
+			}
+			popBlock();
 			return null;
 		}
 		public Void visit(CPP.Absyn.SIfElse p, Void arg)
 		{ /* Code For SIfElse Goes Here */
+			Label trueLabel = new Label(newLabel("IFTRUE"));
+			Label falseLabel = new Label(newLabel("IFFALSE"));
 			p.exp_.accept(new ExpVisitor(), null);
+			emit(new IfZ(falseLabel));
 			p.stm_1.accept(new StmVisitor(), arg);
+			emit(new Goto(trueLabel));
+			emit(falseLabel);
 			p.stm_2.accept(new StmVisitor(), arg);
+			emit(trueLabel);
 			return null;
 		}
 	}
@@ -224,28 +240,30 @@ public class Compiler
 	{
 		public Type visit(CPP.Absyn.ETrue p, Type arg)
 		{ /* Code For ETrue Goes Here */
-			return null;
+			emit(new IConst(1));
+			return BOOL;
 		}
 		public Type visit(CPP.Absyn.EFalse p, Type arg)
 		{ /* Code For EFalse Goes Here */
-			return null;
+			emit(new IConst(0));
+			return BOOL;
 		}
 		public Type visit(CPP.Absyn.EInt p, Type arg)
 		{
 			emit (new IConst (p.integer_));
-			return null;
+			return INT;
 		}
 		public Type visit(CPP.Absyn.EDouble p, Type arg)
 		{ /* Code For EDouble Goes Here */
 			emit(new DConst(p.double_));
-			return null;
+			return DOUBLE;
 		}
 		//x
 		public Type visit(CPP.Absyn.EId p, Type type)
 		{ /* Code For EId Goes Here */
 			emit(new Load(type, lookupVar(p.id_)));
 			lastSeenVar = p.id_;
-			return null;
+			return type;
 		}
 		public Type visit(CPP.Absyn.EApp p, Type arg)
 		{ /* Code For EApp Goes Here */
@@ -279,17 +297,43 @@ public class Compiler
 		}
 		public Type visit(CPP.Absyn.EPostDecr p, Type arg)
 		{ /* Code For EPostDecr Goes Here */
-			p.exp_.accept(new ExpVisitor(), arg);
+			Type t = p.exp_.accept(new ExpVisitor(), arg);
+			emit(new Dup(t));
+			if(arg instanceof Type_int)
+				emit(new IConst(1));
+			else
+				emit(new DConst(1.0));
+			emit(new Sub(arg));
+			emit(new Store(arg, lookupVar(lastSeenVar)));
 			return null;
 		}
 		public Type visit(CPP.Absyn.EPreIncr p, Type arg)
 		{ /* Code For EPreIncr Goes Here */
-			p.exp_.accept(new ExpVisitor(), arg);
+			Type t = p.exp_.accept(new ExpVisitor(), arg);
+			if(arg instanceof Type_int){
+				System.out.println(t);
+				emit(new Pop(t));
+				emit(new Inc(t, lookupVar(lastSeenVar), 1));
+				emit(new Load(t, lookupVar(lastSeenVar)));
+			}
+			else{
+				emit(new DConst(1.0));
+				emit(new Add(t));
+				emit(new Dup(t));
+				emit(new Store(t, lookupVar(lastSeenVar)));
+			}
 			return null;
 		}
 		public Type visit(CPP.Absyn.EPreDecr p, Type arg)
 		{ /* Code For EPreDecr Goes Here */
-			p.exp_.accept(new ExpVisitor(), arg);
+			Type t = p.exp_.accept(new ExpVisitor(), arg);
+			if(arg instanceof Type_int)
+				emit(new IConst(1));
+			else
+				emit(new DConst(1.0));
+			emit(new Sub(t));
+			emit(new Dup(t));
+			emit(new Store(t, lookupVar(lastSeenVar)));
 			return null;
 		}
 		public Type visit(CPP.Absyn.ETimes p, Type arg)
@@ -322,51 +366,139 @@ public class Compiler
 		}
 		public Type visit(CPP.Absyn.ELt p, Type arg)
 		{ /* Code For ELt Goes Here */
-			p.exp_1.accept(new ExpVisitor(), arg);
+			Label trueLabel = new Label(newLabel("TRUE"));
+			emit(new IConst(1));
+			Type t = p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
-			return null;
+			if(t instanceof Type_int){
+				emit(new IfLt(t, trueLabel));
+				emit(new Pop(new Type_int()));
+				emit(new IConst(0));
+				emit(trueLabel);
+			}
+			//TODO for double
+			return arg;
 		}
 		public Type visit(CPP.Absyn.EGt p, Type arg)
 		{ /* Code For EGt Goes Here */
-			p.exp_1.accept(new ExpVisitor(), arg);
+			Label trueLabel = new Label(newLabel("TRUE"));
+			emit(new IConst(1));
+			Type t = p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
-			return null;
+			if(t instanceof Type_int){
+				emit(new IfGt(t, trueLabel));
+				emit(new Pop(new Type_int()));
+				emit(new IConst(0));
+				emit(trueLabel);
+			}
+			//TODO for double
+			return arg;
 		}
 		public Type visit(CPP.Absyn.ELtEq p, Type arg)
 		{ /* Code For ELtEq Goes Here */
-			p.exp_1.accept(new ExpVisitor(), arg);
+			Label trueLabel = new Label(newLabel("TRUE"));
+			emit(new IConst(1));
+			Type t = p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
-			return null;
+			if(t instanceof Type_int){
+				emit(new IfLe(t, trueLabel));
+				emit(new Pop(new Type_int()));
+				emit(new IConst(0));
+				emit(trueLabel);
+			}
+			//TODO for double
+			return arg;
 		}
 		public Type visit(CPP.Absyn.EGtEq p, Type arg)
 		{ /* Code For EGtEq Goes Here */
-			p.exp_1.accept(new ExpVisitor(), arg);
+			Label trueLabel = new Label(newLabel("TRUE"));
+			emit(new IConst(1));
+			Type t = p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
-			return null;
+			if(t instanceof Type_int){
+				emit(new IfGe(t, trueLabel));
+				emit(new Pop(new Type_int()));
+				emit(new IConst(0));
+				emit(trueLabel);
+			}
+			//TODO for double
+			return arg;
 		}
 		public Type visit(CPP.Absyn.EEq p, Type arg)
 		{ /* Code For EEq Goes Here */
-			p.exp_1.accept(new ExpVisitor(), arg);
+			Label trueLabel = new Label(newLabel("TRUE"));
+			emit(new IConst(1));
+			Type t = p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
-			return null;
+			if(t instanceof Type_int){
+				emit(new IfEq(t, trueLabel));
+				emit(new Pop(new Type_int()));
+				emit(new IConst(0));
+				emit(trueLabel);
+			}
+			//TODO for double
+			return arg;
 		}
 		public Type visit(CPP.Absyn.ENEq p, Type arg)
 		{ /* Code For ENEq Goes Here */
-			p.exp_1.accept(new ExpVisitor(), arg);
+			Label trueLabel = new Label(newLabel("TRUE"));
+			emit(new IConst(1));
+			Type t = p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
-			return null;
+			if(t instanceof Type_int){
+				emit(new IfNe(t, trueLabel));
+				emit(new Pop(new Type_int()));
+				emit(new IConst(0));
+				emit(trueLabel);
+			}
+			//TODO for double
+			return arg;
 		}
 		public Type visit(CPP.Absyn.EAnd p, Type arg)
 		{ /* Code For EAnd Goes Here */
+			Label falseLabel = new Label(newLabel("ANDFALSE"));
+			//assuming false
+			emit(new IConst(0));
 			p.exp_1.accept(new ExpVisitor(), arg);
+			//check if 0
+			//if yes, jump to true
+			emit(new IConst(0));
+			emit(new IfEq(INT, falseLabel));
 			p.exp_2.accept(new ExpVisitor(), arg);
-			return null;
+			//check if 0
+			//if yes, jump to true
+			emit(new IConst(0));
+			emit(new IfEq(INT, falseLabel));
+			//if no, pop 0 
+			emit(new Pop(INT));
+			//push 1 - tell them their life was indeed true
+			emit(new IConst(1));
+			//false label
+			emit(falseLabel);
+			return arg;
 		}
 		public Type visit(CPP.Absyn.EOr p, Type arg)
 		{ /* Code For EOr Goes Here */
+			Label trueLabel = new Label(newLabel("ORTRUE"));
+			//assuming true
+			emit(new IConst(1));
 			p.exp_1.accept(new ExpVisitor(), arg);
+			//check if 1
+			//if yes, jump to true
+			emit(new IConst(1));
+			emit(new IfEq(INT, trueLabel));
 			p.exp_2.accept(new ExpVisitor(), arg);
-			return null;
+			//check if 1
+			//if yes, jump to true
+			emit(new IConst(1));
+			emit(new IfEq(INT, trueLabel));
+			//if no, pop1
+			emit(new Pop(INT));
+			//push 0 - tell them their life was a lie
+			emit(new IConst(0));
+			//true label
+			emit(trueLabel);
+			return arg;
 		}
 		public Type visit(CPP.Absyn.EAss p, Type arg)
 		{ /* Code For EAss Goes Here */
@@ -374,7 +506,7 @@ public class Compiler
 			p.exp_2.accept(new ExpVisitor(), arg);
 			emit(new Dup(arg));
 			emit(new Store(arg, addr));
-			return null;
+			return arg;
 		}
 		@Override
 		public Type visit(ETyped p, Type arg) {
@@ -428,7 +560,18 @@ public class Compiler
 		//no ret stm found
 		return true;
 	}
+	
+	String newLabel(String prefix){
+		return prefix + (nextLabel++);
+	}
 
+	public void newBlock() {
+		cxt.add(0, new TreeMap<String, VariableEntry>());
+	}
+	public void popBlock() {
+		cxt.remove(0);
+	}
+	
 	class Size implements Type.Visitor<Integer,Void> {
 		// public Size() {}
 		public Integer visit (Type_int t, Void arg) {
@@ -495,42 +638,48 @@ public class Compiler
 		}
 
 		public Void visit (IfZ c) {
-			;
+			decStack(INT);
 			return null;
 		}
 
 		public Void visit (IfNZ c) {
-			;
+			decStack(INT);
 			return null;
 		}
 
 		public Void visit (IfEq c) {
-			;
+			decStack(INT);
+			decStack(INT);
 			return null;
 		}
 
 		public Void visit (IfNe c) {
-			;
+			decStack(INT);
+			decStack(INT);
 			return null;
 		}
 
 		public Void visit (IfLt c) {
-			;
+			decStack(INT);
+			decStack(INT);
 			return null;
 		}
 
 		public Void visit (IfGt c) {
-			;
+			decStack(INT);
+			decStack(INT);
 			return null;
 		}
 
 		public Void visit (IfLe c) {
-			;
+			decStack(INT);
+			decStack(INT);
 			return null;
 		}
 
 		public Void visit (IfGe c) {
-			;
+			decStack(INT);
+			decStack(INT);
 			return null;
 		}
 
