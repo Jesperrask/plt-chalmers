@@ -104,8 +104,8 @@ class Call extends Code {
 }
 
 class Label extends Code {
-	public Label label;
-	public Label (Label label) {
+	public String label;
+	public Label (String label) {
 		this.label = label;
 	}
 	public <R> R accept (CodeVisitor<R> v) {
@@ -314,23 +314,25 @@ interface CodeVisitor<R> {
 }
 
 class CodeToJVM implements CodeVisitor<String> {
-	
+
 	public String visit (Store c) {
+		//TODO for i=0..3
 		if(c.type instanceof Type_int)
-			return "istore_"+c.addr;
+			return "istore "+c.addr;
 		else if (c.type instanceof Type_double)
-			return "dstore_"+c.addr;
+			return "dstore "+c.addr;
 		else 
-			return "astore_"+c.addr;
+			return "astore "+c.addr;
 	}
 
 	public String visit (Load c) {
+		//TODO for i=0..3
 		if(c.type instanceof Type_int)
-			return "ldc "+c.addr;
+			return "iload "+c.addr;
 		else if (c.type instanceof Type_double)
-			return "ldc2_w "+c.addr;
+			return "dload "+c.addr;
 		else 
-			return "ldc "+c.addr;
+			return "aload "+c.addr;
 	}
 
 	public String visit (IConst c) {
@@ -342,7 +344,13 @@ class CodeToJVM implements CodeVisitor<String> {
 	}
 
 	public String visit (DConst c) {
-		return "";
+		double d = c.immed;
+		if(d==0)
+			return "dconst_"+0;
+		else if(d==1)
+			return "dconst_"+1;
+		else
+			return "ldc2_w " + d;
 	}
 
 	public String visit (Dup c) {
@@ -363,7 +371,12 @@ class CodeToJVM implements CodeVisitor<String> {
 	}
 
 	public String visit (Return c) {
-		return "";
+		if(c.type instanceof Type_void)
+			return "return";
+		else if (c.type instanceof Type_double)
+			return "dreturn";
+		else 
+			return "ireturn";
 	}
 
 	public String visit (Call c) {
@@ -371,11 +384,11 @@ class CodeToJVM implements CodeVisitor<String> {
 	}
 
 	public String visit (Label c) {
-		return "";
+		return c.label + ":";
 	}
 
 	public String visit (Goto c) {
-		return "";
+		return "goto " + c.label.label;
 	}
 
 	public String visit (IfZ c) {
@@ -419,7 +432,10 @@ class CodeToJVM implements CodeVisitor<String> {
 	}
 
 	public String visit (Inc c) {
-		return "";
+		if(c.type instanceof Type_double)
+			throw new RuntimeException("Internal error: cannot inc for a double!");
+		else
+			return "iinc " + c.addr + " " +c.delta;
 	}
 
 	public String visit (Add c) {
@@ -432,15 +448,27 @@ class CodeToJVM implements CodeVisitor<String> {
 	}
 
 	public String visit (Sub c) {
-		return "";
+		if(c.type instanceof Type_int)
+			return "isub";
+		else if(c.type instanceof Type_double)
+			return "dsub";
+		throw new RuntimeException("Internal error: cannot sub for non-numeric type");
 	}
 
 	public String visit (Mul c) {
-		return "";
+		if(c.type instanceof Type_int)
+			return "imul";
+		else if(c.type instanceof Type_double)
+			return "dmul";
+		throw new RuntimeException("Internal error: cannot mul for non-numeric type");
 	}
 
 	public String visit (Div c) {
-		return "";
+		if(c.type instanceof Type_int)
+			return "idiv";
+		else if(c.type instanceof Type_double)
+			return "ddiv";
+		throw new RuntimeException("Internal error: cannot div for non-numeric type");
 	}
 
 }

@@ -6,10 +6,12 @@ import java.util.TreeMap;
 import CPP.Absyn.Arg;
 import CPP.Absyn.DFun;
 import CPP.Absyn.Def;
+import CPP.Absyn.EId;
 import CPP.Absyn.ETyped;
 import CPP.Absyn.Exp;
 import CPP.Absyn.PDefs;
 import CPP.Absyn.Program;
+import CPP.Absyn.SReturn;
 import CPP.Absyn.Stm;
 import CPP.Absyn.Type;
 import CPP.Absyn.Type_bool;
@@ -69,6 +71,14 @@ public class Compiler
 		output.add("	return");
 		output.add(".end method");
 
+		output.add(".method public static main([Ljava/lang/String;)V");
+		output.add("	.limit locals 1");
+		output.add("	.limit stack 1");
+		output.add("	invokestatic "+name+"/main()I");
+		output.add("	pop");
+		output.add("	return");
+		output.add(".end method");
+
 		// Create signature
 		sig = new TreeMap<String, Fun>();
 
@@ -76,7 +86,7 @@ public class Compiler
 		sig.put("printInt", new Fun("Runtime/printInt", new FunType(VOID, Util.singleArg(INT))));
 		sig.put("printDouble", new Fun("Runtime/printDouble", new FunType(VOID, Util.singleArg(DOUBLE))));
 		sig.put("readInt", new Fun("Runtime/readInt", new FunType(INT, Util.noArg())));
-		sig.put("readDouble", new Fun("Runtime/readDouble", new FunType(INT, Util.noArg())));
+		sig.put("readDouble", new Fun("Runtime/readDouble", new FunType(DOUBLE, Util.noArg())));
 
 		for (Def d: ((PDefs)p).listdef_) {
 			DFun def = (DFun)d;
@@ -132,10 +142,18 @@ public class Compiler
 			output = savedOutput;
 
 			output.add(".method public static " + p.id_ + sig.get(p.id_).funType.toJVM());
-			output.add("  .limit locals " + limitLocals);
-			output.add("  .limit stack " + limitStack);
+			output.add("	.limit locals " + limitLocals);
+			output.add("	.limit stack " + limitStack);
 			for (String s: newOutput) {
-				output.add("  " + s);
+				output.add("	" + s);
+			}
+			if(isWithoutReturn(p)){
+				if(p.id_.equals("main")){
+					output.add("	iconst_0");
+					output.add("	ireturn");
+				} else {
+					output.add("	return");
+				}
 			}
 			output.add(".end method");
 			return null;
@@ -178,7 +196,8 @@ public class Compiler
 		}
 		public Void visit(CPP.Absyn.SReturn p, Void arg)
 		{ /* Code For SReturn Goes Here */
-			p.exp_.accept(new ExpVisitor(), null);
+			Type t = p.exp_.accept(new ExpVisitor(), null);
+			emit(new Return(t));
 			return null;
 		}
 		public Void visit(CPP.Absyn.SWhile p, Void arg)
@@ -246,11 +265,16 @@ public class Compiler
 		//exp ++
 		public Type visit(CPP.Absyn.EPostIncr p, Type arg)
 		{ /* Code For EPostIncr Goes Here */
-			p.exp_.accept(new ExpVisitor(), arg);
-			emit(new Dup(arg));
-			emit(new IConst(1));
-			emit(new Add(arg));
-			emit(new Store(arg, lookupVar(lastSeenVar)));
+			Type t = p.exp_.accept(new ExpVisitor(), arg);
+			if(arg instanceof Type_int){
+				emit(new Inc(t, lookupVar(lastSeenVar), 1));
+			}
+			else{
+				emit(new Dup(arg));
+				emit(new DConst(1.0));
+				emit(new Add(arg));
+				emit(new Store(arg, lookupVar(lastSeenVar)));
+			}
 			return null;
 		}
 		public Type visit(CPP.Absyn.EPostDecr p, Type arg)
@@ -272,24 +296,28 @@ public class Compiler
 		{ /* Code For ETimes Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
+			emit(new Mul(arg));
 			return null;
 		}
 		public Type visit(CPP.Absyn.EDiv p, Type arg)
 		{ /* Code For EDiv Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
+			emit(new Div(arg));
 			return null;
 		}
 		public Type visit(CPP.Absyn.EPlus p, Type arg)
 		{ /* Code For EPlus Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
+			emit(new Add(arg));
 			return null;
 		}
 		public Type visit(CPP.Absyn.EMinus p, Type arg)
 		{ /* Code For EMinus Goes Here */
 			p.exp_1.accept(new ExpVisitor(), arg);
 			p.exp_2.accept(new ExpVisitor(), arg);
+			emit(new Sub(arg));
 			return null;
 		}
 		public Type visit(CPP.Absyn.ELt p, Type arg)
@@ -342,8 +370,10 @@ public class Compiler
 		}
 		public Type visit(CPP.Absyn.EAss p, Type arg)
 		{ /* Code For EAss Goes Here */
-			p.exp_1.accept(new ExpVisitor(), arg);
+			Integer addr = lookupVar(((EId) p.exp_1).id_);
 			p.exp_2.accept(new ExpVisitor(), arg);
+			emit(new Dup(arg));
+			emit(new Store(arg, addr));
 			return null;
 		}
 		@Override
@@ -361,8 +391,9 @@ public class Compiler
 	void newVar(String x, Type t) {
 		VariableEntry varEntry = new VariableEntry(t, nextLocal);
 		cxt.get(0).put(x,varEntry);
-		nextLocal = nextLocal + t.accept(new Size(), null);
-		++limitLocals;
+		Integer size = t.accept(new Size(), null);
+		nextLocal = nextLocal + size;
+		limitLocals = limitLocals + size;
 	}
 
 	Integer lookupVar (String x) {
@@ -386,6 +417,16 @@ public class Compiler
 
 	void decStack(Type t) {
 		currentStack = currentStack - t.accept(new Size(), null);
+	}
+
+	boolean isWithoutReturn(DFun fun){
+		for(Stm s : fun.liststm_){
+			//ret stm found
+			if(s instanceof SReturn)
+				return false;
+		}
+		//no ret stm found
+		return true;
 	}
 
 	class Size implements Type.Visitor<Integer,Void> {
@@ -432,26 +473,24 @@ public class Compiler
 		}
 
 		public Void visit (Pop c) {
+			decStack(c.type);
 			return null;
 		}
 
 		public Void visit (Return c) {
-			;
 			return null;
 		}
 
 		public Void visit (Call c) {
-			;
+			incStack(c.fun.funType.returnType);
 			return null;
 		}
 
 		public Void visit (Label c) {
-			;
 			return null;
 		}
 
 		public Void visit (Goto c) {
-			;
 			return null;
 		}
 
@@ -506,27 +545,26 @@ public class Compiler
 		}
 
 		public Void visit (Inc c) {
-			;
 			return null;
 		}
 
 		public Void visit (Add c) {
-			;
+			decStack(c.type);
 			return null;
 		}
 
 		public Void visit (Sub c) {
-			;
+			decStack(c.type);;
 			return null;
 		}
 
 		public Void visit (Mul c) {
-			;
+			decStack(c.type);
 			return null;
 		}
 
 		public Void visit (Div c) {
-			;
+			decStack(c.type);
 			return null;
 		}
 
