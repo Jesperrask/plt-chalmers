@@ -52,9 +52,9 @@ public class Compiler
 	//last seen var
 	public String lastSeenVar = null;
 
-	public void compile(String name, CPP.Absyn.Program p) {
+	public LinkedList<String> compile(String name, CPP.Absyn.Program p) {
 		// Initialize output
-		output = new LinkedList();
+		output = new LinkedList<String>();
 
 		//class declaration
 		output.add(".class public " + name);
@@ -70,7 +70,7 @@ public class Compiler
 		output.add(".end method");
 
 		// Create signature
-		sig = new TreeMap();
+		sig = new TreeMap<String, Fun>();
 
 		//add runtime methods
 		sig.put("printInt", new Fun("Runtime/printInt", new FunType(VOID, Util.singleArg(INT))));
@@ -87,11 +87,7 @@ public class Compiler
 		// Run compiler
 		p.accept(new ProgramVisitor(), null);
 
-		// Output result
-		for (String s: output) {
-//			if(!s.trim().isEmpty())
-				System.out.println(s);
-		}
+		return output;
 	}
 
 	public class ProgramVisitor implements Program.Visitor<Void,Void>
@@ -110,8 +106,8 @@ public class Compiler
 		public Void visit(CPP.Absyn.DFun p, Void arg)
 		{
 			// reset state for new function
-			cxt = new LinkedList();
-			cxt.add(new TreeMap());
+			cxt = new LinkedList<Map<String, VariableEntry>>();
+			cxt.add(new TreeMap<String, VariableEntry>());
 			nextLocal = 0;
 			limitLocals = 0;
 			limitStack  = 0;
@@ -119,7 +115,7 @@ public class Compiler
 
 			// save output so far and reset output;
 			LinkedList<String> savedOutput = output;
-			output = new LinkedList();
+			output = new LinkedList<String>();
 
 			//p.id_;
 
@@ -135,7 +131,7 @@ public class Compiler
 			LinkedList<String> newOutput = output;
 			output = savedOutput;
 
-			output.add(".method public static " + sig.get(p.id_).toJVM());
+			output.add(".method public static " + p.id_ + sig.get(p.id_).funType.toJVM());
 			output.add("  .limit locals " + limitLocals);
 			output.add("  .limit stack " + limitStack);
 			for (String s: newOutput) {
