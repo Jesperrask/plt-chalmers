@@ -79,8 +79,8 @@ public class TypeChecker
 		{
 			// set return type and initial context
 			returnType = p.type_;
-			cxt = new LinkedList();
-			cxt.add(new TreeMap());
+			cxt = new LinkedList<Map<String,Type>>();
+			cxt.add(new TreeMap<String,Type>());
 
 			ListArg args = new ListArg();
 			// add all function parameters to context
@@ -146,9 +146,9 @@ public class TypeChecker
 		{
 			newBlock();
 			Exp typedExp = check(BOOL, p.exp_.accept(new ExpVisitor(), arg));
-			p.stm_.accept(new StmVisitor(), arg);
+			Stm typedStm = p.stm_.accept(new StmVisitor(), arg);
 			popBlock();
-			return new SWhile(typedExp, p.stm_);
+			return new SWhile(typedExp, typedStm);
 		}
 
 		// E.g. int x; { int x = 1; x++; }
@@ -166,12 +166,12 @@ public class TypeChecker
 		{
 			Exp typedExp = check(BOOL, p.exp_.accept(new ExpVisitor(), arg));
 			newBlock();
-			p.stm_1.accept(new StmVisitor(), arg);
+			Stm typedStm_1 = p.stm_1.accept(new StmVisitor(), arg);
 			popBlock();
 			newBlock();
-			p.stm_2.accept(new StmVisitor(), arg);
+			Stm typedStm_2 = p.stm_2.accept(new StmVisitor(), arg);
 			popBlock();
-			return new SIfElse(typedExp, p.stm_1, p.stm_2);
+			return new SIfElse(typedExp, typedStm_1, typedStm_2);
 		}
 	}
 
@@ -249,28 +249,28 @@ public class TypeChecker
 		{
 			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
 			Type t1 = numericType(typedE1);
-			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			Exp typedE2 = check(t1, p.exp_2.accept(new ExpVisitor(), arg));
 			return new ETyped( new ETimes(typedE1, typedE2), t1);
 		}
 		public Exp visit(CPP.Absyn.EDiv p, Void arg)
 		{
 			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
 			Type t1 = numericType(typedE1);
-			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			Exp typedE2 = check(t1, p.exp_2.accept(new ExpVisitor(), arg));
 			return new ETyped(new EDiv(typedE1, typedE2), t1);
 		}
 		public Exp visit(CPP.Absyn.EPlus p, Void arg)
 		{
 			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
 			Type t1 = numericType(typedE1);
-			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			Exp typedE2 = check(t1, p.exp_2.accept(new ExpVisitor(), arg));
 			return new ETyped(new EPlus(typedE1, typedE2), t1);
 		}
 		public Exp visit(CPP.Absyn.EMinus p, Void arg)
 		{
 			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
 			Type t1 = numericType(typedE1);
-			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			Exp typedE2 = check(t1, p.exp_2.accept(new ExpVisitor(), arg));
 			return new ETyped(new EMinus(typedE1, typedE2), t1);
 		}
 
@@ -280,38 +280,38 @@ public class TypeChecker
 		{
 			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
 			Type t1 = numericType(typedE1);
-			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			Exp typedE2 = check(t1, p.exp_2.accept(new ExpVisitor(), arg));
 			return new ETyped(new ELt(typedE1, typedE2), BOOL);
 		}
 		public Exp visit(CPP.Absyn.EGt p, Void arg)
 		{
 			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
 			Type t1 = numericType(typedE1);
-			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			Exp typedE2 = check(t1, p.exp_2.accept(new ExpVisitor(), arg));
 			return new ETyped(new EGt(typedE1, typedE2), BOOL);
 		}
 		public Exp visit(CPP.Absyn.ELtEq p, Void arg)
 		{
 			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
 			Type t1 = numericType(typedE1);
-			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			Exp typedE2 = check(t1, p.exp_2.accept(new ExpVisitor(), arg));
 			return new ETyped(new ELtEq(typedE1, typedE2), BOOL);
 		}
 		public Exp visit(CPP.Absyn.EGtEq p, Void arg)
 		{
 			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
 			Type t1 = numericType(typedE1);
-			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
-			return new ETyped(new EGt(typedE1, typedE2), BOOL);
+			Exp typedE2 = check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			return new ETyped(new EGtEq(typedE1, typedE2), BOOL);
 		}
 
 		// Equality operators
 
 		public Exp visit(CPP.Absyn.EEq p, Void arg)
 		{
-			ETyped typedE1 = (ETyped) p.exp_1.accept(new ExpVisitor(), arg);
-			Type t1 = eQType(typedE1.type_);
-			ETyped typedE2 = (ETyped) check(t1, p.exp_2.accept(new ExpVisitor(), arg));
+			Exp typedE1 = p.exp_1.accept(new ExpVisitor(), arg);
+			Type t1 = eQType(((ETyped)typedE1).type_);
+			Exp typedE2 = check(t1, p.exp_2.accept(new ExpVisitor(), arg));
 			return new ETyped(new EEq(typedE1, typedE2), BOOL);
 		}
 		public Exp visit(CPP.Absyn.ENEq p, Void arg)
@@ -364,7 +364,7 @@ public class TypeChecker
 	}
 
 	public void newBlock() {
-		cxt.add(0, new TreeMap());
+		cxt.add(0, new TreeMap<String,Type>());
 	}
 	public void popBlock() {
 		cxt.remove(0);
@@ -431,10 +431,5 @@ public class TypeChecker
 			throw new TypeException("expected expression of equality type");
 		return t1;
 	}
-	
-//	public void equalTypes (Type t1, Type t2) {
-//		if (!t1.equals(t2))
-//			throw new TypeException("expected types " + t1 + " and " + t2 + " to be equal");
-//	}
 	
 }
