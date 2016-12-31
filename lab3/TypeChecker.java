@@ -223,7 +223,7 @@ public class TypeChecker
 			return new ETyped( new EApp(p.id_, typedExpList), ft.returnType);
 		}
 
-		// Increment, decrement
+		// Increment, decrement - LHS not annotated
 
 		// x++
 		public Exp visit(CPP.Absyn.EPostIncr p, Void arg)
@@ -337,7 +337,7 @@ public class TypeChecker
 			return  new ETyped(new EOr(typedE1, typedE2), BOOL);
 		}
 
-		// Assignment
+		// Assignment - LHS not annotated
 		public Exp visit(CPP.Absyn.EAss p, Void arg)
 		{
 			Type varType = lookupVar(isVar(p.exp_1));
