@@ -228,19 +228,23 @@ public class TypeChecker
 		// x++
 		public Exp visit(CPP.Absyn.EPostIncr p, Void arg)
 		{
-			return new ETyped(p, numericType(lookupVar(isVar(p.exp_))));
+			Exp typedEId = p.exp_.accept(new ExpVisitor(), arg);
+			return new ETyped(new EPostIncr(typedEId), numericType(lookupVar(isVar(p.exp_))));
 		}
 		public Exp visit(CPP.Absyn.EPostDecr p, Void arg)
 		{
-			return new ETyped(p, numericType(lookupVar(isVar(p.exp_))));
+			Exp typedEId = p.exp_.accept(new ExpVisitor(), arg);
+			return new ETyped(new EPostDecr(typedEId), numericType(lookupVar(isVar(p.exp_))));
 		}
 		public Exp visit(CPP.Absyn.EPreIncr p, Void arg)
 		{
-			return new ETyped(p, numericType(lookupVar(isVar(p.exp_))));
+			Exp typedEId = p.exp_.accept(new ExpVisitor(), arg);
+			return new ETyped( new EPreIncr(typedEId), numericType(lookupVar(isVar(p.exp_))));
 		}
 		public Exp visit(CPP.Absyn.EPreDecr p, Void arg)
 		{
-			return new ETyped(p, numericType(lookupVar(isVar(p.exp_))));
+			Exp typedEId = p.exp_.accept(new ExpVisitor(), arg);
+			return new ETyped(new EPreDecr(typedEId), numericType(lookupVar(isVar(p.exp_))));
 		}
 
 		// Arithmetical operators

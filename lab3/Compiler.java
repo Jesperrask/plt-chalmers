@@ -27,8 +27,8 @@ public class Compiler
 	// Signature mapping function names to their JVM name and type
 	Map<String,Fun> sig;
 
-	// Context mapping variable identifiers to their type.
-	List<Map<String,VariableEntry>> cxt;
+	// Context mapping variable identifiers to their addr.
+	List<Map<String,Integer>> cxt;
 
 	// Next free address for local variable;
 	int nextLocal;
@@ -116,8 +116,8 @@ public class Compiler
 		public Void visit(CPP.Absyn.DFun p, Void arg)
 		{
 			// reset state for new function
-			cxt = new LinkedList<Map<String, VariableEntry>>();
-			cxt.add(new TreeMap<String, VariableEntry>());
+			cxt = new LinkedList<Map<String, Integer>>();
+			cxt.add(new TreeMap<String, Integer>());
 			nextLocal = 0;
 			limitLocals = 0;
 			limitStack  = 0;
@@ -236,6 +236,17 @@ public class Compiler
 			return null;
 		}
 	}
+	
+	/*
+	 * Description of <Type,Type>:
+	 * "Type as return type" is used to extract the type annotation from ETyped node
+	 * 		and return to higher levels on the tree (like stms or higher level exp) -
+	 *  	-> this is returned only when ExpVistor visits ETyped node
+	 * "Type as argument type" is used to extract type annotation from ETyped node
+	 * 		and provided for use to the actual expression (one level down)
+	 * 		-> this is provided when ExpVistor visits an Exp node from ETyped node
+	 * 				(which is the case for all expressions)
+	 */
 	public class ExpVisitor implements Exp.Visitor<Type,Type>
 	{
 		public Type visit(CPP.Absyn.ETrue p, Type arg)
@@ -259,9 +270,9 @@ public class Compiler
 			return null;
 		}
 		//x
-		public Type visit(CPP.Absyn.EId p, Type arg)
+		public Type visit(CPP.Absyn.EId p, Type type)
 		{ /* Code For EId Goes Here */
-			emit(new Load(lookupVarType(p.id_), lookupVar(p.id_)));
+			emit(new Load(type, lookupVar(p.id_)));
 			lastSeenVar = p.id_;
 			return null;
 		}
@@ -545,31 +556,21 @@ public class Compiler
 	}
 
 	void newVar(String x, Type t) {
-		VariableEntry varEntry = new VariableEntry(t, nextLocal);
-		cxt.get(0).put(x,varEntry);
+		cxt.get(0).put(x,nextLocal);
 		Integer size = t.accept(new Size(), null);
 		nextLocal = nextLocal + size;
 		limitLocals = limitLocals + size;
 	}
 
 	Integer lookupVar (String x) {
-		for (Map<String,VariableEntry> b: cxt) {
-			VariableEntry ve = b.get(x);
-			if(ve != null && ve.getAddress() != null)
-				return ve.getAddress();
+		for (Map<String,Integer> b: cxt) {
+			Integer ve = b.get(x);
+			if(ve != null)
+				return ve;
 		}
 		return null;
 	}
 	
-	Type lookupVarType (String x) {
-		for (Map<String,VariableEntry> b: cxt) {
-			VariableEntry ve = b.get(x);
-			if(ve != null && ve.getAddress() != null)
-				return ve.getType();
-		}
-		return null;
-	}
-
 	// update limitStack, currentStack according to instruction
 	void adjustStack(Code c) {
 		c.accept(new AdjustStack());
@@ -599,7 +600,7 @@ public class Compiler
 	}
 
 	public void newBlock() {
-		cxt.add(0, new TreeMap<String, VariableEntry>());
+		cxt.add(0, new TreeMap<String, Integer>());
 	}
 	public void popBlock() {
 		cxt.remove(0);
