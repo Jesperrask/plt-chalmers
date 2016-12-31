@@ -181,7 +181,8 @@ public class Compiler
 		// int x,y,z;
 		public Void visit(CPP.Absyn.SDecls p, Void arg)
 		{
-			for (String x: p.listid_) newVar (x, p.type_);
+			for (String x: p.listid_) 
+				newVar (x, p.type_);
 			return null;
 		}
 
@@ -207,7 +208,7 @@ public class Compiler
 			emit(loopLabel);
 			p.exp_.accept(new ExpVisitor(), null);
 			emit(new IfZ(endLabel));
-			p.stm_.accept(new StmVisitor(), arg);
+			p.stm_.accept(new StmVisitor(), null);
 			emit(new Goto(loopLabel));
 			emit(endLabel);
 			return null;
@@ -217,7 +218,7 @@ public class Compiler
 			newBlock();
 			for (Stm x: p.liststm_)
 			{ 
-				x.accept(new StmVisitor(), arg);
+				x.accept(new StmVisitor(), null);
 			}
 			popBlock();
 			return null;
@@ -228,10 +229,10 @@ public class Compiler
 			Label falseLabel = new Label(newLabel("IFFALSE"));
 			p.exp_.accept(new ExpVisitor(), null);
 			emit(new IfZ(falseLabel));
-			p.stm_1.accept(new StmVisitor(), arg);
+			p.stm_1.accept(new StmVisitor(), null);
 			emit(new Goto(trueLabel));
 			emit(falseLabel);
-			p.stm_2.accept(new StmVisitor(), arg);
+			p.stm_2.accept(new StmVisitor(), null);
 			emit(trueLabel);
 			return null;
 		}
@@ -386,58 +387,102 @@ public class Compiler
 		//cz it is a bool and doesn't apply for operands!
 		public Type visit(CPP.Absyn.ELt p, Type arg)
 		{ /* Code For ELt Goes Here */
-			Label trueLabel = new Label(newLabel("TRUE"));
 			emit(new IConst(1));
 			Type t = p.exp_1.accept(new ExpVisitor(), null);
 			p.exp_2.accept(new ExpVisitor(), null);
 			if(t instanceof Type_int){
+				Label trueLabel = new Label(newLabel("TRUE"));
 				emit(new IfLt(t, trueLabel));
-				emit(new Pop(new Type_int()));
+				emit(new Pop(INT));
 				emit(new IConst(0));
 				emit(trueLabel);
+			} else if(t instanceof Type_double){
+				Label trueLabel = new Label(newLabel("DTRUE"));
+				Label falseLabel = new Label(newLabel("DFALSE"));
+				emit(new DGt());
+				emit(new Mul(INT));
+				emit(new IConst(-1));
+				emit(new IfEq(INT, trueLabel));
+				emit(new IConst(0));
+				emit(new Goto(falseLabel));
+				emit(trueLabel);
+				emit(new IConst(1));
+				emit(falseLabel);
 			}
-			//TODO for double
 			return null;
 		}
 		public Type visit(CPP.Absyn.EGt p, Type arg)
 		{ /* Code For EGt Goes Here */
-			Label trueLabel = new Label(newLabel("TRUE"));
 			emit(new IConst(1));
 			Type t = p.exp_1.accept(new ExpVisitor(), null);
 			p.exp_2.accept(new ExpVisitor(), null);
 			if(t instanceof Type_int){
+				Label trueLabel = new Label(newLabel("TRUE"));
 				emit(new IfGt(t, trueLabel));
 				emit(new Pop(new Type_int()));
 				emit(new IConst(0));
 				emit(trueLabel);
+			} else if(t instanceof Type_double){
+				Label trueLabel = new Label(newLabel("DTRUE"));
+				Label falseLabel = new Label(newLabel("DFALSE"));
+				emit(new DGt());
+				emit(new Mul(INT));
+				emit(new IConst(1));
+				emit(new IfEq(INT, trueLabel));
+				emit(new IConst(0));
+				emit(new Goto(falseLabel));
+				emit(trueLabel);
+				emit(new IConst(1));
+				emit(falseLabel);
 			}
-			//TODO for double
 			return null;
 		}
 		public Type visit(CPP.Absyn.ELtEq p, Type arg)
 		{ /* Code For ELtEq Goes Here */
-			Label trueLabel = new Label(newLabel("TRUE"));
 			emit(new IConst(1));
 			Type t = p.exp_1.accept(new ExpVisitor(), null);
 			p.exp_2.accept(new ExpVisitor(), null);
 			if(t instanceof Type_int){
+				Label trueLabel = new Label(newLabel("TRUE"));
 				emit(new IfLe(t, trueLabel));
 				emit(new Pop(new Type_int()));
 				emit(new IConst(0));
 				emit(trueLabel);
+			} else if(t instanceof Type_double){
+				Label trueLabel = new Label(newLabel("DTRUE"));
+				Label falseLabel = new Label(newLabel("DFALSE"));
+				emit(new DGt());
+				emit(new IfGt(INT, trueLabel));
+				emit(new IConst(0));
+				emit(new Goto(falseLabel));
+				emit(trueLabel);
+				emit(new IConst(1));
+				emit(falseLabel);
 			}
 			//TODO for double
 			return null;
 		}
 		public Type visit(CPP.Absyn.EGtEq p, Type arg)
 		{ /* Code For EGtEq Goes Here */
-			Label trueLabel = new Label(newLabel("TRUE"));
 			emit(new IConst(1));
 			Type t = p.exp_1.accept(new ExpVisitor(), null);
 			p.exp_2.accept(new ExpVisitor(), null);
 			if(t instanceof Type_int){
+				Label trueLabel = new Label(newLabel("TRUE"));
 				emit(new IfGe(t, trueLabel));
 				emit(new Pop(new Type_int()));
+				emit(new IConst(0));
+				emit(trueLabel);
+			} else if(t instanceof Type_double){
+				Label trueLabel = new Label(newLabel("DTRUE"));
+				Label falseLabel = new Label(newLabel("DFALSE"));
+				emit(new DGt());
+				emit(new Mul(INT));
+				emit(new IConst(-1));
+				emit(new IfEq(INT, falseLabel));
+				emit(new IConst(1));
+				emit(new Goto(trueLabel));
+				emit(falseLabel);
 				emit(new IConst(0));
 				emit(trueLabel);
 			}
@@ -449,30 +494,51 @@ public class Compiler
 		
 		public Type visit(CPP.Absyn.EEq p, Type arg)
 		{ /* Code For EEq Goes Here */
-			Label trueLabel = new Label(newLabel("TRUE"));
 			emit(new IConst(1));
 			Type t = p.exp_1.accept(new ExpVisitor(), null);
 			p.exp_2.accept(new ExpVisitor(), null);
 			if(t instanceof Type_int){
+				Label trueLabel = new Label(newLabel("TRUE"));
 				emit(new IfEq(t, trueLabel));
-				emit(new Pop(new Type_int()));
+				emit(new Pop(INT));
 				emit(new IConst(0));
 				emit(trueLabel);
+			} else if(t instanceof Type_double){
+				Label trueLabel = new Label(newLabel("DTRUE"));
+				Label falseLabel = new Label(newLabel("DFALSE"));
+				emit(new DGt());
+				emit(new Mul(INT));
+				emit(new IfZ(trueLabel));
+				emit(new IConst(0));
+				emit(new Goto(falseLabel));
+				emit(trueLabel);
+				emit(new IConst(1));
+				emit(falseLabel);
 			}
-			//TODO for double
 			return null;
 		}
 		public Type visit(CPP.Absyn.ENEq p, Type arg)
 		{ /* Code For ENEq Goes Here */
-			Label trueLabel = new Label(newLabel("TRUE"));
 			emit(new IConst(1));
 			Type t = p.exp_1.accept(new ExpVisitor(), null);
 			p.exp_2.accept(new ExpVisitor(), null);
 			if(t instanceof Type_int){
+				Label trueLabel = new Label(newLabel("TRUE"));
 				emit(new IfNe(t, trueLabel));
 				emit(new Pop(new Type_int()));
 				emit(new IConst(0));
 				emit(trueLabel);
+			} else if(t instanceof Type_double){
+				Label trueLabel = new Label(newLabel("DTRUE"));
+				Label falseLabel = new Label(newLabel("DFALSE"));
+				emit(new DGt());
+				emit(new Mul(INT));
+				emit(new IfNZ(trueLabel));
+				emit(new IConst(0));
+				emit(new Goto(falseLabel));
+				emit(trueLabel);
+				emit(new IConst(1));
+				emit(falseLabel);
 			}
 			//TODO for double
 			return null;
@@ -533,8 +599,8 @@ public class Compiler
 		{ /* Code For EAss Goes Here */
 			//cast is legal because the type checker 
 			//doesn't annotate a var on LHS
-			Integer addr = lookupVar(((EId) p.exp_1).id_);
 			p.exp_2.accept(new ExpVisitor(), null);
+			Integer addr = lookupVar(((EId) p.exp_1).id_);
 			emit(new Dup(arg));
 			emit(new Store(arg, addr));
 			return null;
@@ -544,7 +610,7 @@ public class Compiler
 		
 		@Override
 		public Type visit(ETyped p, Type arg) {
-			//this returns null type as expressions other than ETyped return null
+			//this visit returns null type, as expressions other than ETyped return null
 			p.exp_.accept(new ExpVisitor(), p.type_);
 			return p.type_;
 		}
@@ -718,12 +784,12 @@ public class Compiler
 		}
 
 		public Void visit (DGt c) {
-			;
+			decStack(DOUBLE);
 			return null;
 		}
 
 		public Void visit (DLt c) {
-			;
+			decStack(DOUBLE);
 			return null;
 		}
 

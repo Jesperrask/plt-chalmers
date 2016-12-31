@@ -316,20 +316,30 @@ interface CodeVisitor<R> {
 class CodeToJVM implements CodeVisitor<String> {
 
 	public String visit (Store c) {
-		//TODO for i=0..3
 		if(c.type instanceof Type_int || c.type instanceof Type_bool)
-			return "istore "+c.addr;
+			if(c.addr >=0 && c.addr <=3)
+				return "istore_"+c.addr;
+			else
+				return "istore "+c.addr;
 		else if (c.type instanceof Type_double)
-			return "dstore "+c.addr;
+			if(c.addr >=0 && c.addr <=3)
+				return "dstore_"+c.addr;
+			else
+				return "dstore "+c.addr;
 		throw new RuntimeException("unsupported store type!");
 	}
 
 	public String visit (Load c) {
-		//TODO for i=0..3
 		if(c.type instanceof Type_int || c.type instanceof Type_bool)
-			return "iload "+c.addr;
+			if(c.addr >=0 && c.addr <=3)
+				return "iload_"+c.addr;
+			else
+				return "iload "+c.addr;
 		else if (c.type instanceof Type_double)
-			return "dload "+c.addr;
+			if(c.addr >=0 && c.addr <=3)
+				return "dload_"+c.addr;
+			else
+				return "dload "+c.addr;
 		throw new RuntimeException("unsupported load type!");
 	}
 
@@ -394,7 +404,7 @@ class CodeToJVM implements CodeVisitor<String> {
 	}
 
 	public String visit (IfNZ c) {
-		return "";
+		return "ifne " + c.label.label;
 	}
 
 	public String visit (IfEq c) {
@@ -440,11 +450,11 @@ class CodeToJVM implements CodeVisitor<String> {
 	}
 
 	public String visit (DGt c) {
-		return "";
+		return "dcmpg";
 	}
 
 	public String visit (DLt c) {
-		return "";
+		throw new RuntimeException("WTH is DLt?!");
 	}
 
 	public String visit (Inc c) {
@@ -459,8 +469,7 @@ class CodeToJVM implements CodeVisitor<String> {
 			return "iadd";
 		else if (c.type instanceof Type_double)
 			return "dadd";
-		else 
-			return "invokestatic Runtime/plusString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;";
+		throw new RuntimeException("Internal error: cannot add for non-numeric type");
 	}
 
 	public String visit (Sub c) {
