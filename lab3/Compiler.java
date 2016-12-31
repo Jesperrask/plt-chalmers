@@ -159,6 +159,8 @@ public class Compiler
 			return null;
 		}
 	}
+	
+	//emits no code
 	public class ArgVisitor implements Arg.Visitor<Void,Void>
 	{
 		public Void visit(CPP.Absyn.ADecl p, Void arg)
@@ -459,7 +461,6 @@ public class Compiler
 				emit(new IConst(1));
 				emit(falseLabel);
 			}
-			//TODO for double
 			return null;
 		}
 		public Type visit(CPP.Absyn.EGtEq p, Type arg)
@@ -486,7 +487,6 @@ public class Compiler
 				emit(new IConst(0));
 				emit(trueLabel);
 			}
-			//TODO for double
 			return null;
 		}
 		
@@ -540,7 +540,6 @@ public class Compiler
 				emit(new IConst(1));
 				emit(falseLabel);
 			}
-			//TODO for double
 			return null;
 		}
 		
