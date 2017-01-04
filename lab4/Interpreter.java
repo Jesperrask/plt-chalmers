@@ -42,7 +42,7 @@ public class Interpreter {
 	{
 		public Value visit(Fun.Absyn.DMain p, Void arg)
 		{
-			return p.exp_.accept(new EvalVisitor(), new Empty());
+			return p.exp_.accept(new EvalVisitor(), emptyEnvironment());
 		}
 	}
 
@@ -73,10 +73,15 @@ public class Interpreter {
 		{
 			// first try to find it in the environment
 			Value v = env.lookup(p.ident_);
-			if(v!=null)
+			if(v!=null){
+				//this value will be VInt
+				//unless in the case of CBN where it will be a VClos
 				return v.getValue();
+			}
 			// then try to find it in the signature
 			else{
+				//this e is mostly EAbs except in case of 0 arguments
+				//in which case, it is a VInt
 				Exp e = sig.get(p.ident_);
 				if(e==null)
 					throw new RuntimeException("unbound variable " + p.ident_);
@@ -200,7 +205,7 @@ public class Interpreter {
 			if (!(exp instanceof EAbs))
 				throw new RuntimeException ("not a function, cannot apply");
 			EAbs f = (EAbs)exp;
-			return f.exp_.accept (new EvalVisitor(), new Extend (f.ident_, v, env));
+			return f.exp_.accept (new EvalVisitor(), env.extend(f.ident_, v));
 		}
 
 		public String toString(){
@@ -213,35 +218,30 @@ public class Interpreter {
 		}
 
 	}
-
-	abstract class Environment {
-		abstract Value lookup (String x);
+	
+	interface Environment{
+		public Value lookup (String x);
+		public Environment extend(String x, Value v);
 	}
-
-	class Empty extends Environment {
-		Value lookup (String x) { return null; }
-		public String toString(){
-			return "null";
-		}
+	
+	public Environment emptyEnvironment(){
+		return new MutableTreeMapEnvImpl();
 	}
+	
+	class MutableTreeMapEnvImpl extends TreeMap<String, Value> implements Environment{
 
-	class Extend extends Environment {
-		final String x;
-		final Value  v;
-		final Environment rest;
-		public Extend (String x, Value v, Environment rest) {
-			this.x = x;
-			this.v = v;
-			this.rest = rest;
-		}
-		Value lookup (String y) {
-			if (x.equals(y)) return v;
-			else return rest.lookup(y);
-		}
+		private static final long serialVersionUID = 1L;
 
-		public String toString(){
-			return x + ":=" + v.toString() + "," + rest.toString();
+		public Value lookup (String x){
+			return this.get(x);
 		}
+		
+		public Environment extend(String x, Value v){
+			MutableTreeMapEnvImpl envClone = (MutableTreeMapEnvImpl) this.clone();
+			envClone.put(x, v);
+			return envClone;
+		}
+	
 	}
 
 }
