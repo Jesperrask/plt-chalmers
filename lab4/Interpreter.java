@@ -85,7 +85,7 @@ public class Interpreter {
 				Exp e = sig.get(p.ident_);
 				if(e==null)
 					throw new RuntimeException("unbound variable " + p.ident_);
-				return e.accept(new EvalVisitor(), env);
+				return e.accept(new EvalVisitor(), emptyEnvironment());
 			} 
 		}
 
